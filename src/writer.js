@@ -24,8 +24,11 @@ class Writer extends Transform {
       switch (token.id) {
         case 0xFD:
           writeDoneToken(this, token);
+          break;
+
         case 0xAA:
           writeErrorToken(this, token);
+          break;
       }
     } catch (e) {
       return callback(e);
