@@ -20,6 +20,7 @@ function nextToken(reader) {
     case 0xFE: return readDoneProcToken;
     case 0x81: return readColmetadataToken;
     case 0xAA: return readErrorToken;
+    case 0x79: return readReturnStatusToken;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -117,3 +118,4 @@ const readDoneProcToken = require('./tokens/done-proc/read');
 const readDoneInProcToken = require('./tokens/done-in-proc/read');
 const readColmetadataToken = require('./tokens/colmetadata/read');
 const readErrorToken = require('./tokens/error/read');
+const readReturnStatusToken = require('./tokens/return-status/read');
