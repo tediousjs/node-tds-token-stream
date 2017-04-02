@@ -30,6 +30,10 @@ class Writer extends Transform {
           writeErrorToken(this, token);
           break;
 
+        case 0xAB:
+          writeInfoToken(this, token);
+          break;
+
         case 0x79:
           writeReturnStatusToken(this, token);
           break;
@@ -46,4 +50,5 @@ module.exports = Writer;
 
 const writeDoneToken = require('./tokens/done/write');
 const writeErrorToken = require('./tokens/error/write');
+const writeInfoToken = require('./tokens/info/write');
 const writeReturnStatusToken = require('./tokens/return-status/write');
