@@ -15,7 +15,7 @@ class Writer extends Transform {
 
   _transform(chunk: Token | Buffer | string, encoding: string | null, callback: () => void) {
     if (!(chunk instanceof Token)) {
-      return process.nextTick(callback, new Error('Expected Buffer'));
+      return process.nextTick(callback, new Error('Expected Token'));
     }
 
     const token: Token = chunk;
