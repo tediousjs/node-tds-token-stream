@@ -15,7 +15,7 @@ class Writer extends Transform {
 
   _transform(chunk: Token | Buffer | string, encoding: string | null, callback: () => void) {
     if (!(chunk instanceof Token)) {
-      return callback(new Error('Expected Buffer'));
+      return process.nextTick(callback, new Error('Expected Buffer'));
     }
 
     const token: Token = chunk;
@@ -39,10 +39,10 @@ class Writer extends Transform {
           break;
       }
     } catch (e) {
-      return callback(e);
+      return process.nextTick(callback, e);
     }
 
-    callback();
+    process.nextTick(callback);
   }
 }
 
