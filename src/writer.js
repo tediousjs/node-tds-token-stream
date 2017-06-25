@@ -13,7 +13,7 @@ class Writer extends Transform {
     this.version = version;
   }
 
-  _transform(chunk: Token | Buffer | string, encoding: string | null, callback: () => void) {
+  _transform(chunk: Token | Buffer | string, encoding: string | null, callback: (error: ?Error) => void) {
     if (!(chunk instanceof Token)) {
       return callback(new Error('Expected Buffer'));
     }

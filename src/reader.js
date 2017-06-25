@@ -81,7 +81,7 @@ const Reader = module.exports = class Reader extends Transform {
     return 4294967296 * this.buffer.readUInt32LE(this.position + 4) + this.buffer.readUInt32LE(this.position);
   }
 
-  _transform(chunk: Buffer | string, encoding: string | null, callback: () => void) {
+  _transform(chunk: Buffer | string, encoding: string | null, callback: (error: ?Error) => void) {
     if (!(chunk instanceof Buffer)) {
       return callback(new Error('Expected Buffer'));
     }
