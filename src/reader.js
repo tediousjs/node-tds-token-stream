@@ -56,7 +56,7 @@ const Reader = module.exports = class Reader extends Transform {
     return this.position + count <= this.buffer.length;
   }
 
-  readString(encoding: 'ucs2' | 'ascii', start: number, end: number) {
+  readString(encoding: 'ucs2' | 'ascii' | 'utf8', start: number, end: number) {
     return this.buffer.toString(encoding, this.position + start, this.position + end);
   }
 
