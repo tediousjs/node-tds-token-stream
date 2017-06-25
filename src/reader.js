@@ -83,7 +83,7 @@ const Reader = module.exports = class Reader extends Transform {
 
   _transform(chunk: Buffer | string, encoding: string | null, callback: () => void) {
     if (!(chunk instanceof Buffer)) {
-      return process.nextTick(callback, new Error('Expected Buffer'));
+      return callback(new Error('Expected Buffer'));
     }
 
     this.buffer = Buffer.concat([ this.buffer, chunk ]);
@@ -95,18 +95,18 @@ const Reader = module.exports = class Reader extends Transform {
         this.next = next;
       }
     } catch (e) {
-      return process.nextTick(callback, e);
+      return callback(e);
     }
 
-    process.nextTick(callback);
+    callback();
   }
 
   _flush(callback: (error: ?Error) => void) {
     if (this.bytesAvailable(1)) {
-      return process.nextTick(callback, new Error(`stream ended while waiting for data for '${this.next.name}'`));
+      return callback(new Error(`stream ended while waiting for data for '${this.next.name}'`));
     }
 
-    process.nextTick(callback);
+    callback();
   }
 
   push: (chunk: ?(Token | Buffer | string), encoding?: string) => boolean
