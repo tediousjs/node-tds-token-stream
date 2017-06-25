@@ -69,13 +69,13 @@ function parseBVarCharEnvchange(reader, type) {
   const oldValueLength = reader.readUInt8(offset);
   offset += 1;
 
-  const oldValue = reader.toString('utf8', offset, oldValueLength);
+  const oldValue = reader.readString('utf8', offset, oldValueLength);
   offset += oldValueLength;
 
   const newValueLength = reader.readUInt8(offset);
   offset += 1;
 
-  const newValue = reader.toString('utf8', offset, newValueLength);
+  const newValue = reader.readString('utf8', offset, newValueLength);
 
   reader.push(new EnvchangeToken(type, oldValue, newValue));
 
