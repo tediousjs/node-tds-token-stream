@@ -86,7 +86,7 @@ const Reader = module.exports = class Reader extends Transform {
     if (!(chunk instanceof Buffer)) {
       return callback(new Error('Expected Buffer'));
     }
-   
+
     this.buffer = Buffer.concat([ this.buffer, chunk ]);
     this.position = 0;
 
@@ -106,7 +106,7 @@ const Reader = module.exports = class Reader extends Transform {
     if (this.bytesAvailable(1)) {
       return callback(new Error(`stream ended while waiting for data for '${this.next.name}'`));
     }
-    
+
     callback();
   }
 
