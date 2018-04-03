@@ -20,6 +20,7 @@ function nextToken(reader) {
     case 0xFE: return readDoneProcToken;
     case 0x81: return readColmetadataToken;
     case 0xAA: return readErrorToken;
+    case 0xAB: return readInfoErrorToken;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -85,7 +86,7 @@ const Reader = module.exports = class Reader extends Transform {
     if (!(chunk instanceof Buffer)) {
       return callback(new Error('Expected Buffer'));
     }
-
+   
     this.buffer = Buffer.concat([ this.buffer, chunk ]);
     this.position = 0;
 
@@ -105,7 +106,7 @@ const Reader = module.exports = class Reader extends Transform {
     if (this.bytesAvailable(1)) {
       return callback(new Error(`stream ended while waiting for data for '${this.next.name}'`));
     }
-
+    
     callback();
   }
 
@@ -117,3 +118,4 @@ const readDoneProcToken = require('./tokens/done-proc/read');
 const readDoneInProcToken = require('./tokens/done-in-proc/read');
 const readColmetadataToken = require('./tokens/colmetadata/read');
 const readErrorToken = require('./tokens/error/read');
+const readInfoErrorToken = require('./tokens/infoerror/read');
