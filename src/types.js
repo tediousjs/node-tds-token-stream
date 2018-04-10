@@ -18,7 +18,7 @@ type typeInfoId =
   0x22 | // IMAGETYPE
   0x23 | // TEXTTYPE
   0x62 | // SSVARIANTTYPE
-  0x63;  // NTEXTTYPE
+  0x63; // NTEXTTYPE
 
 class Collation {
   localeId: number
@@ -59,8 +59,8 @@ class Collation {
     collation.localeId |= buffer[0];
 
     // This may not be extracting the correct nibbles in the correct order.
-//    collation.flags = buffer[3] >> 4;
-//    collation.flags |= buffer[2] & 0xF0;
+    //    collation.flags = buffer[3] >> 4;
+    //    collation.flags |= buffer[2] & 0xF0;
 
     // This may not be extracting the correct nibble.
     collation.version = buffer[3] & 0x0F;
