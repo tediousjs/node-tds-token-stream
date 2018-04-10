@@ -25,7 +25,10 @@
     "flow-copy-source": "^1.1.0",
     "mocha": "^5.0.5",
     "semantic-release": "^15.1.5",
-    "semantic-release-cli": "^3.0.3"
+    "semantic-release-cli": "^3.0.3",
+    "@commitlint/cli": "^6.0.2",
+    "@commitlint/config-conventional": "^6.0.2",
+    "@commitlint/travis-cli": "^6.0.2"
   },
   "dependencies": {
     "babel-runtime": "^6.26.0"
@@ -49,5 +52,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/tediousjs/node-tds-token-stream.git"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
   }
 }
