@@ -4,6 +4,7 @@
   "version": "0.0.0-development",
   "main": "lib/index.js",
   "scripts": {
+    "lint": "eslint src test && flow",
     "pretest": "eslint . && flow",
     "test": "mocha",
     "prepublish": "babel src --out-dir lib && flow-copy-source src lib",
