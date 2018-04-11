@@ -11,22 +11,16 @@ class InfoErrorToken extends Token {
   procName: string
   lineNumber: number
 
-  constructor(infoNumber: number,
-        state: number,
-        infoClass: number,
-        message: string,
-        serverName: string,
-        procName: string,
-        lineNumber: number) {
+  constructor() {
 
     super(0xAB);
-    this.infoNumber = infoNumber;
-    this.state = state;
-    this.infoClass = infoClass;
-    this.message = message;
-    this.serverName = serverName;
-    this.procName = procName;
-    this.lineNumber = lineNumber;
+    this.infoNumber = 0;
+    this.state = 0;
+    this.infoClass = 0;
+    this.message = '';
+    this.serverName = '';
+    this.procName = '';
+    this.lineNumber = 0;
   }
 }
 
