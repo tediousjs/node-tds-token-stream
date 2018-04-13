@@ -22,6 +22,7 @@ function nextToken(reader) {
     case 0xAA: return readErrorToken;
     case 0xAB: return readInfoErrorToken;
     case 0xAD: return readLoginAckToken;
+    case 0xA9: return readOrderToken;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -125,3 +126,4 @@ const readColmetadataToken = require('./tokens/colmetadata/read');
 const readErrorToken = require('./tokens/error/read');
 const readInfoErrorToken = require('./tokens/infoerror/read');
 const readLoginAckToken = require('./tokens/loginack/read');
+const readOrderToken = require('./tokens/order/read');
