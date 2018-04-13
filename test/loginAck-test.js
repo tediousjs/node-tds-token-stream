@@ -5,7 +5,7 @@ const Reader = require('../src').Reader;
 const LoginAckToken = require('../src/tokens/loginack');
 
 
-describe('Parsing an INFO token', function() {
+describe('Parsing an LOGINACK token', function() {
   const encoding = 'ucs2';
   let reader;
 
