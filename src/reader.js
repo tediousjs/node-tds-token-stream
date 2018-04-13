@@ -23,6 +23,7 @@ function nextToken(reader) {
     case 0xAB: return readInfoErrorToken;
     case 0xAD: return readLoginAckToken;
     case 0xA9: return readOrderToken;
+    case 0x79: return readReturnStatus;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -79,6 +80,10 @@ const Reader = module.exports = class Reader extends Transform {
     return this.buffer.readUInt32LE(this.position + offset);
   }
 
+  readInt32LE(offset: number) : number {
+    return this.buffer.readInt32LE(this.position + offset);
+  }
+
   readUInt32BE(offset: number) : number {
     return this.buffer.readUInt32BE(this.position + offset);
   }
@@ -127,3 +132,4 @@ const readErrorToken = require('./tokens/error/read');
 const readInfoErrorToken = require('./tokens/infoerror/read');
 const readLoginAckToken = require('./tokens/loginack/read');
 const readOrderToken = require('./tokens/order/read');
+const readReturnStatus = require('./tokens/returnStatus/read');
