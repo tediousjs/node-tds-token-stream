@@ -53,8 +53,8 @@ class ColmetadataToken extends Token {
 
   static ColumnData: Class<ColumnData> // eslint-disable-line no-undef
 
-//  encryptionKeyCount: number
-//  encryptionKeyTable: Array<EncryptionKeyInfo>
+  //  encryptionKeyCount: number
+  //  encryptionKeyTable: Array<EncryptionKeyInfo>
 
   constructor(count: number) {
     super(0x81);

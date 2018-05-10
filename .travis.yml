@@ -11,7 +11,12 @@ notifications:
 node_js:
   - '4'
   - '6'
-  - '7'
+  - '8'
+  - '9'
+
+stages:
+  - test
+  - lint
 
 before_script:
   - npm prune
@@ -22,3 +27,13 @@ after_success:
 branches:
   except:
     - /^v\d+\.\d+\.\d+$/
+
+jobs:
+  include:
+    - stage: lint
+      node_js: 4
+      before_install: skip
+      before_script: skip
+      script:
+        - npm run lint
+        - commitlint-travis
