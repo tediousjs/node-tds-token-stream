@@ -20,6 +20,10 @@ function nextToken(reader) {
     case 0xFE: return readDoneProcToken;
     case 0x81: return readColmetadataToken;
     case 0xAA: return readErrorToken;
+    case 0xAB: return readInfoErrorToken;
+    case 0xAD: return readLoginAckToken;
+    case 0xA9: return readOrderToken;
+    case 0x79: return readReturnStatus;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -76,6 +80,14 @@ const Reader = module.exports = class Reader extends Transform {
     return this.buffer.readUInt32LE(this.position + offset);
   }
 
+  readInt32LE(offset: number) : number {
+    return this.buffer.readInt32LE(this.position + offset);
+  }
+
+  readUInt32BE(offset: number) : number {
+    return this.buffer.readUInt32BE(this.position + offset);
+  }
+
   readUInt64LE(offset: number) {
     // TODO: This can overflow
     return 4294967296 * this.buffer.readUInt32LE(this.position + 4) + this.buffer.readUInt32LE(this.position);
@@ -117,3 +129,7 @@ const readDoneProcToken = require('./tokens/done-proc/read');
 const readDoneInProcToken = require('./tokens/done-in-proc/read');
 const readColmetadataToken = require('./tokens/colmetadata/read');
 const readErrorToken = require('./tokens/error/read');
+const readInfoErrorToken = require('./tokens/infoerror/read');
+const readLoginAckToken = require('./tokens/loginack/read');
+const readOrderToken = require('./tokens/order/read');
+const readReturnStatus = require('./tokens/returnStatus/read');
