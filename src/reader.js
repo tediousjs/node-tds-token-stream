@@ -24,6 +24,7 @@ function nextToken(reader) {
     case 0xAD: return readLoginAckToken;
     case 0xA9: return readOrderToken;
     case 0x79: return readReturnStatus;
+    case 0xAC: return readReturnValueToken;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -37,15 +38,17 @@ const Reader = module.exports = class Reader extends Transform {
   position: number
   buffer: Buffer
   version: number
+  options: ?any // assign connection.options
 
   stash: Array<any>
 
-  constructor(version: 0x07000000 | 0x07010000 | 0x71000001 | 0x72090002 | 0x730A0003 | 0x730B0003 | 0x74000004) {
+  constructor(version: 0x07000000 | 0x07010000 | 0x71000001 | 0x72090002 | 0x730A0003 | 0x730B0003 | 0x74000004, options: ?any) {
     super({ readableObjectMode: true });
 
     this.buffer = Buffer.alloc(0);
     this.version = version;
     this.position = 0;
+    this.options = options;
 
     this.stash = [];
 
@@ -76,6 +79,10 @@ const Reader = module.exports = class Reader extends Transform {
     return this.buffer.readUInt16LE(this.position + offset);
   }
 
+  readInt16LE(offset: number) : number {
+    return this.buffer.readInt16LE(this.position + offset);
+  }
+
   readUInt32LE(offset: number) : number {
     return this.buffer.readUInt32LE(this.position + offset);
   }
@@ -91,6 +98,19 @@ const Reader = module.exports = class Reader extends Transform {
   readUInt64LE(offset: number) {
     // TODO: This can overflow
     return 4294967296 * this.buffer.readUInt32LE(this.position + 4) + this.buffer.readUInt32LE(this.position);
+  }
+
+  readInt64LE(offset: number) {
+    // TODO: This can overflow
+    return 4294967296 * this.buffer.readInt32LE(this.position + 4) + (this.buffer[this.position + 4] & (0x80 === 0x80 ? 1 : -1)) * this.buffer.readUInt32LE(this.position);
+  }
+
+  readFloatLE(offset: number) {
+    return this.buffer.readFloatLE(this.position + offset);
+  }
+
+  readDoubleLE(offset: number) {
+    return this.buffer.readDoubleLE(this.position + offset);
   }
 
   _transform(chunk: Buffer | string, encoding: string | null, callback: (error: ?Error) => void) {
@@ -133,3 +153,4 @@ const readInfoErrorToken = require('./tokens/infoerror/read');
 const readLoginAckToken = require('./tokens/loginack/read');
 const readOrderToken = require('./tokens/order/read');
 const readReturnStatus = require('./tokens/returnStatus/read');
+const readReturnValueToken = require('./tokens/returnvalue/read');
