@@ -8,17 +8,6 @@ class ReturnValueToken extends Token {
   paramName: ?string
   status: ?number
   userType: ?number
-  // TODO: parser flag
-  flags: {
-        nullable: ?boolean,
-        caseSensitive: ?boolean,
-        updateable: ?boolean,
-        identity: ?boolean,
-        computed: ?boolean,
-        reservedODBC: ?boolean,
-        fixedLenCLRType: ?boolean,
-        encrypted: ?boolean
-    }
   typeInfo: ?TypeInfo
   valueLength: ?number
   value: ?any
@@ -30,16 +19,6 @@ class ReturnValueToken extends Token {
     this.paramName = undefined;
     this.status = undefined;
     this.userType = undefined;
-    this.flags = {
-      nullable: undefined,
-      caseSensitive: undefined,
-      updateable: undefined,
-      identity: undefined,
-      computed: undefined,
-      reservedODBC: undefined,
-      fixedLenCLRType: undefined,
-      encrypted: undefined
-    };
     this.typeInfo = undefined;
     this.valueLength = undefined;
     this.value = undefined;

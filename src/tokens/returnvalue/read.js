@@ -59,48 +59,16 @@ function parseUserType_7_2(reader: Reader) {
 }
 
 function parseFlags(reader: Reader) {
-  if (reader.version < 0x72090002) {
-    return parseFlags_7_0;
-  } else if (reader.version < 0x74000004) {
-    return parseFlags_7_2;
-  } else {
-    return parseFlags_7_4;
-  }
-}
-
-
-function parseFlags_7_0(reader: Reader) {
+  // for RETURNVALUE_TOKEN all the flags should be zero (TDS 2.2.7.18)
   if (!reader.bytesAvailable(2)) {
     return;
   }
 
-  // TODO: Implement flag parsing
   const flags = reader.readUInt16LE(0); // eslint-disable-line no-unused-vars
   reader.consumeBytes(2);
 
-  return parseTypeInfo;
-}
-
-function parseFlags_7_2(reader: Reader) {
-  if (!reader.bytesAvailable(2)) {
-    return;
-  }
-
-  // TODO: Implement flag parsing
-  const flags = reader.readUInt16LE(0); // eslint-disable-line no-unused-vars
-  reader.consumeBytes(2);
-
-  return parseTypeInfo;
-}
-
-function parseFlags_7_4(reader: Reader) {
-  if (!reader.bytesAvailable(2)) {
-    return;
-  }
-
-  // TODO: Implement flag parsing
-  const flags = reader.readUInt16LE(0); // eslint-disable-line no-unused-vars
-  reader.consumeBytes(2);
+  if (0 != flags)
+    throw new Error('Unknown flags in RETURNVALUE_TOKEN ');
 
   return parseTypeInfo;
 }
