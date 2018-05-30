@@ -9,18 +9,19 @@ class ColumnData {
   _tableNameParts: number
   tableName: Array<string>
 
-  nullable: boolean
-  caseSensitive: boolean
-  updateable: ?boolean
-  identity: boolean
-
-  computed: ?boolean
-  sparseColumnSet: ?boolean
-  encrypted: ?boolean
-  fixedLenCLRType: ?boolean
-  hidden: ?boolean
-  key: ?boolean
-  nullableUnknown: ?boolean
+  flags: {
+    nullable: boolean,
+    caseSensitive: boolean,
+    updateable: ?string,
+    identity: boolean,
+    computed: ?boolean,
+    fixedLenCLRType: ?boolean,
+    sparseColumnSet: ?boolean,
+    encrypted: ?boolean,
+    hidden: ?boolean,
+    key: ?boolean,
+    nullableUnknown: ?boolean
+  }
 
   typeInfo: ?TypeInfo
 
@@ -30,19 +31,19 @@ class ColumnData {
     this.tableName = [];
     this._tableNameParts = 0;
 
-    this.nullable = false;
-    this.caseSensitive = false;
-    this.updateable = undefined;
-    this.identity = false;
-
-    this.computed = undefined;
-    this.sparseColumnSet = undefined;
-    this.encrypted = undefined;
-    this.fixedLenCLRType = undefined;
-    this.hidden = undefined;
-    this.key = undefined;
-    this.nullableUnknown = undefined;
-
+    this.flags = {
+      nullable: false,
+      caseSensitive: false,
+      updateable: undefined,
+      identity: false,
+      computed: undefined,
+      fixedLenCLRType: undefined,
+      sparseColumnSet: undefined,
+      encrypted: undefined,
+      hidden: undefined,
+      key: undefined,
+      nullableUnknown: undefined
+    };
     this.typeInfo = undefined;
   }
 }

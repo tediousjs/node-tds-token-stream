@@ -72,47 +72,33 @@ function parseUserType_7_2(reader: Reader) {
 }
 
 function parseFlags(reader: Reader) {
-  if (reader.version < 0x72090002) {
-    return parseFlags_7_0;
-  } else if (reader.version < 0x74000004) {
-    return parseFlags_7_2;
-  } else {
-    return parseFlags_7_4;
-  }
-}
-
-function parseFlags_7_0(reader: Reader) {
   if (!reader.bytesAvailable(2)) {
     return;
   }
 
-  // TODO: Implement flag parsing
   const flags = reader.readUInt16LE(0); // eslint-disable-line no-unused-vars
   reader.consumeBytes(2);
 
-  return parseTypeInfo;
-}
+  const column: ColumnData = reader.stash[reader.stash.length - 1];
+  const flagParser = new FlagParser(flags);
+  column.flags.nullable = flagParser.nullable();
+  column.flags.caseSensitive = flagParser.caseSensitive();
+  column.flags.updateable = flagParser.updateable();
+  column.flags.identity = flagParser.identity();
 
-function parseFlags_7_2(reader: Reader) {
-  if (!reader.bytesAvailable(2)) {
-    return;
+  if (reader.version >= 0x74000004) {
+    column.flags.encrypted = flagParser.encrypted();
   }
-
-  // TODO: Implement flag parsing
-  const flags = reader.readUInt16LE(0); // eslint-disable-line no-unused-vars
-  reader.consumeBytes(2);
-
-  return parseTypeInfo;
-}
-
-function parseFlags_7_4(reader: Reader) {
-  if (!reader.bytesAvailable(2)) {
-    return;
+  if (reader.version >= 0x730B0003) {
+    column.flags.sparseColumnSet = flagParser.sparseColumnSet();
   }
-
-  // TODO: Implement flag parsing
-  const flags = reader.readUInt16LE(0); // eslint-disable-line no-unused-vars
-  reader.consumeBytes(2);
+  if (reader.version >= 0x72090002) {
+    column.flags.computed = flagParser.computed();
+    column.flags.fixedLenCLRType = flagParser.fixedLenCLRType();
+    column.flags.hidden = flagParser.hidden();
+    column.flags.key = flagParser.key();
+    column.flags.nullableUnknown = flagParser.nullableUnknown();
+  }
 
   return parseTypeInfo;
 }
@@ -214,3 +200,4 @@ module.exports = readColmetadataToken;
 const ColmetadataToken = require('.');
 const ColumnData = ColmetadataToken.ColumnData;
 const { readTypeInfo } = require('../../types');
+const { FlagParser } = require('../parserUtil');
