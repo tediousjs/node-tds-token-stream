@@ -3,6 +3,7 @@
 type readStep = (reader: Reader) =>?readStep;
 const Reader = require('./reader');
 const TYPE = require('./dataTypes').TYPE;
+const guidParser = require('./guid-parser');
 const MAX = (1 << 16) - 1;
 const THREE_AND_A_THIRD = 3 + (1 / 3);
 const MONEY_DIVISOR = 10000;
@@ -28,9 +29,17 @@ function readDataLength(reader: Reader) {
       // Variable length
       if (token.typeInfo.dataLength !== MAX) {
         switch (TYPE[token.typeInfo.id].LengthOfDataLength) {
-          case 1:
+          case 1: // BYTELEN
             reader.stash.push(reader.readUInt8(0));
             reader.consumeBytes(1);
+            return readValue;
+          case 2: // USHORTCHARBINLEN
+            reader.stash.push(reader.readUInt16LE(0));
+            reader.consumeBytes(2);
+            return readValue;
+          case 4: // LONGLEN
+            reader.stash.push(reader.readUInt32LE(0));
+            reader.consumeBytes(4);
             return readValue;
           default:
             console.log('Datalength parser not-implemented for ', TYPE[token.typeInfo.id].name);
@@ -100,6 +109,18 @@ function readValue(reader: Reader) {
       return reader.stash.pop();
 
     // Variable-Length Data Types
+    case 'UniqueIdentifier':
+      switch (dataLength) {
+        case 0:
+          token.value = null;
+          return reader.stash.pop();
+        case 0x10:
+          token.value = guidParser.arrayToGuid(reader.readBuffer(0, dataLength));
+          reader.consumeBytes(dataLength);
+          return reader.stash.pop();
+        default:
+          console.log('Unknown UniqueIdentifier length');
+      }
     case 'IntN':
       switch (dataLength) {
         case 0:

@@ -103,7 +103,7 @@ describe('Parsing a RETURNVALUE token', function() {
       const token = {};
 
       addListners(done, token);
-      assert.throw(() => reader.end(data), Error, 'Unknown flags in RETURNVALUE_TOKEN');
+      assert.throws(() => reader.end(data), Error, 'Unknown flags in RETURNVALUE_TOKEN');
       done();
     });
   });
@@ -120,8 +120,6 @@ describe('Parsing a RETURNVALUE token', function() {
         status = 1;
         userType = 0;
         flag = 0;
-        typeid = 0x26;
-        value = 4;
         tempOffset = 0;
         tempBuff = Buffer.alloc(23);
         buildDataBuffer();
@@ -165,6 +163,8 @@ describe('Parsing a RETURNVALUE token', function() {
 
       it('should parse the INTNTYPE(Tinyint) token correctly', function(done) {
         dataLength = 1;
+        typeid = 0x26;
+        value = 4;
 
         data = Buffer.alloc(27);
         tempBuff.copy(data);
@@ -183,6 +183,8 @@ describe('Parsing a RETURNVALUE token', function() {
 
       it('should parse the INTNTYPE(smallint) token correctly', function(done) {
         dataLength = 2;
+        typeid = 0x26;
+        value = 4;
 
         data = Buffer.alloc(28);
         tempBuff.copy(data);
@@ -202,6 +204,8 @@ describe('Parsing a RETURNVALUE token', function() {
 
       it('should parse the INTNTYPE(Int) token correctly', function(done) {
         dataLength = 4;
+        typeid = 0x26;
+        value = 4;
 
         data = Buffer.alloc(30);
         tempBuff.copy(data);
@@ -220,6 +224,8 @@ describe('Parsing a RETURNVALUE token', function() {
 
       it('should parse the INTNTYPE(Bigint) token correctly', function(done) {
         dataLength = 8;
+        typeid = 0x26;
+        value = 4;
 
         data = Buffer.alloc(34);
         tempBuff.copy(data);
@@ -240,6 +246,7 @@ describe('Parsing a RETURNVALUE token', function() {
 
       it('should parse the INTNTYPE(null) token correctly', function(done) {
         dataLength = 8;
+        typeid = 0x26;
         value = null;
 
         data = Buffer.alloc(26);
@@ -249,6 +256,52 @@ describe('Parsing a RETURNVALUE token', function() {
         data.writeUInt8(dataLength, offset++);
 
         // TYPE_VARBYTE : zero value length for null type
+        data.writeUInt8(0, offset++);
+
+        const token = {};
+        addListners(done, token);
+
+        reader.end(data);
+      });
+
+      it('should parse the GUIDTYPE() token correctly', function(done) {
+        data = Buffer.alloc(42);
+        typeid = 0x24;
+        dataLength = 16;
+
+        value = '6DF72E68-AB06-4D75-AC95-16899948B81C';
+        const valueAsBuffer = Buffer.from([0x68, 0x2E, 0xF7, 0x6D, 0x06, 0xAB, 0x75, 0x4D, 0xAC, 0x95, 0x16, 0x89, 0x99, 0x48, 0xB8, 0x1C]);
+
+        tempBuff.copy(data);
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+
+        const token = {};
+        addListners(done, token);
+
+        reader.end(data);
+      });
+
+      it('should parse the GUIDTYPE()-null token correctly', function(done) {
+        data = Buffer.alloc(26);
+        typeid = 0x24;
+        dataLength = 16;
+
+        value = null;
+
+        tempBuff.copy(data);
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
         data.writeUInt8(0, offset++);
 
         const token = {};
@@ -362,7 +415,7 @@ describe('Parsing a RETURNVALUE token', function() {
         data.writeUInt8(typeid, offset++);
 
         // TYPE_VARBYTE
-        data.writeUInt8(value, offset);
+        data.writeUInt8(value ? 1 : 0, offset);
 
         const token = {};
         addListners(done, token);

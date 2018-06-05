@@ -64,12 +64,20 @@ const type = {
   },
 
   //VARLENTYPE
+  [0x24]: {
+    id: 0x24,
+    type: 'GUIDN',
+    name: 'UniqueIdentifier',
+    LengthOfDataLength: 1
+  },
+
   [0x26]: {
     id: 0x26,
-    name: 'IntN',
     type: 'INTN',
+    name: 'IntN',
     LengthOfDataLength: 1
   }
+
 };
 
 const typeByName = {};
