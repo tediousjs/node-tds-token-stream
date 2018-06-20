@@ -7,8 +7,9 @@ const Reader = require('./reader');
 type typeInfoId =
   // FIXEDLENTYPE
   0x1F | 0x30 | 0x32 | 0x34 | 0x38 | 0x3A | 0x3B | 0x3C | 0x3D | 0x3E | 0x7A | 0x7F |
+
   // BYTELEN_TYPE
-  0x24 | 0x26 | 0x37 |
+  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C |
 
   // USHORTLEN_TYPE
   0xE7 |
@@ -148,12 +149,14 @@ function readTypeId(reader: Reader) {
       return readIntNType;
 
     case 0x37: // DECIMALTYPE
-      return readDecimalType;
-
     case 0x3F: // NUMERICTYPE
-    case 0x68: // BITNTYPE
     case 0x6A: // DECIMALNTYPE
     case 0x6C: // NUMERICNTYPE
+      return readDecimalNumericType(id, reader);
+
+    case 0x68: // BITNTYPE
+      return readBitNType;
+
     case 0x6D: // FLTNTYPE
     case 0x6E: // MONEYNTYPE
     case 0x6F: // DATETIMNTYPE
@@ -212,6 +215,18 @@ function readGuidType(reader: Reader) {
   return next;
 }
 
+function readBitNType(reader: Reader) {
+  if (!reader.bytesAvailable(1)) {
+    return;
+  }
+  const dataLength = reader.readUInt8(0);
+  reader.consumeBytes(1);
+
+  const next = reader.stash.pop();
+  reader.stash.push(new TypeInfo(0x68, dataLength));
+  return next;
+}
+
 function readIntNType(reader: Reader) {
   if (!reader.bytesAvailable(1)) {
     return;
@@ -229,7 +244,7 @@ function readIntNType(reader: Reader) {
   return next;
 }
 
-function readDecimalType(reader: Reader) {
+function readDecimalNumericType(id, reader: Reader) {
   if (!reader.bytesAvailable(3)) {
     return;
   }
@@ -237,11 +252,10 @@ function readDecimalType(reader: Reader) {
   const dataLength = reader.readUInt8(0);
   const precision = reader.readUInt8(1);
   const scale = reader.readUInt8(2);
-
   reader.consumeBytes(3);
 
   const next = reader.stash.pop();
-  reader.stash.push(new TypeInfo(0x37, dataLength, precision, scale));
+  reader.stash.push(new TypeInfo(id, dataLength, precision, scale));
   return next;
 }
 

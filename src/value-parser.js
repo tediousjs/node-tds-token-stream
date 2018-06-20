@@ -119,7 +119,7 @@ function readValue(reader: Reader) {
           reader.consumeBytes(dataLength);
           return reader.stash.pop();
         default:
-          console.log('Unknown UniqueIdentifier length');
+          throw new Error('Unknown UniqueIdentifier length');
       }
     case 'IntN':
       switch (dataLength) {
@@ -144,8 +144,49 @@ function readValue(reader: Reader) {
           reader.consumeBytes(8);
           return reader.stash.pop();
         default:
-          console.log('Unknown length');
+          throw new Error('Unknown length for integer datatype');
       }
+    case 'BitN':
+      switch (dataLength) {
+        case 0:
+          token.value = null;
+          return reader.stash.pop();
+        case 1:
+          token.value = !!reader.readUInt8(0);
+          reader.consumeBytes(1);
+          return reader.stash.pop();
+      }
+    case 'NumericN':
+      if (dataLength === 0) {
+        token.value = null;
+        return reader.stash.pop();
+      }
+      let sign = reader.readUInt8(0);
+      reader.consumeBytes(1);
+      sign = sign === 1 ? 1 : -1;
+      let value;
+      switch (dataLength - 1) {
+        case 4:
+          value = reader.readUInt32LE(0);
+          reader.consumeBytes(4);
+          break;
+        case 8:
+          value = reader.readUNumeric64LE(0);
+          reader.consumeBytes(8);
+          break;
+        case 12:
+          value = reader.readUNumeric96LE(0);
+          reader.consumeBytes(12);
+          break;
+        case 16:
+          value = reader.readUNumeric128LE(0);
+          reader.consumeBytes(16);
+          break;
+        default:
+          throw new Error(`Unsupported numeric size ${dataLength - 1}`);
+      }
+      token.value = (value * sign) / Math.pow(10, token.typeInfo.scale);
+      return reader.stash.pop();
     default:
       console.log('readValue not implemented');
   }

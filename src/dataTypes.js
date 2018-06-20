@@ -76,8 +76,23 @@ const type = {
     type: 'INTN',
     name: 'IntN',
     LengthOfDataLength: 1
-  }
+  },
 
+  [0x68]: {
+    id: 0x68,
+    type: 'BITN',
+    name: 'BitN',
+    LengthOfDataLength: 1
+  },
+
+  [0x6C]: {
+    id: 0x6C,
+    type: 'NUMERICN',
+    name: 'NumericN',
+    LengthOfDataLength: 1,
+    hasPrecision: true,
+    hasScale: true
+  }
 };
 
 const typeByName = {};

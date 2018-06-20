@@ -110,7 +110,7 @@ describe('Parsing a RETURNVALUE token', function() {
 
   describe('in TDS 7.2 mode', function() {
 
-    describe('test INTNTYPE', function() {
+    describe('test VARLENTYPE-BYTELEN', function() {
 
       let reader, data, paramOrdinal, paramName, status, userType, flag, typeid, dataLength, value, offset, tempBuff, tempOffset;
 
@@ -309,6 +309,115 @@ describe('Parsing a RETURNVALUE token', function() {
 
         reader.end(data);
       });
+
+      it('should parse the NUMERIC token correctly : 1 <= precision <= 9', function(done) {
+        data = Buffer.alloc(33);
+        tempBuff.copy(data);
+
+        typeid = 0x6C;
+        const lengthInMeta = 0x11;
+        const precision = 5;
+        const scale = 3;
+        dataLength = 5;
+        const valueAsBuffer = Buffer.from([0x00, 0xC5, 0xDB, 0x00, 0x00]);
+        value = -56.261;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(lengthInMeta, offset++);
+        data.writeUInt8(precision, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the NUMERIC token correctly : 10 <= precision <= 19', function(done) {
+        data = Buffer.alloc(37);
+        tempBuff.copy(data);
+
+        typeid = 0x6C;
+        const lengthInMeta = 0x11;
+        const precision = 15;
+        const scale = 3;
+        dataLength = 9;
+        const valueAsBuffer = Buffer.from([0x01, 0xAD, 0x2F, 0x1C, 0xBD, 0x11, 0x05, 0x02, 0x00]);
+        value = 568523698745.261;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(lengthInMeta, offset++);
+        data.writeUInt8(precision, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the NUMERIC token correctly : 29 <= precision <= 38', function(done) {
+        data = Buffer.alloc(45);
+        tempBuff.copy(data);
+        // 1.235236987000989e+26
+        typeid = 0x6C;
+        const lengthInMeta = 0x11;
+        const precision = 30;
+        const scale = 3;
+        dataLength = 17;
+        const valueAsBuffer = Buffer.from([0x01, 0x2D, 0x77, 0xCE, 0xC2, 0x9B, 0x0E, 0x61, 0x34, 0xA4, 0x68, 0x20, 0x8F, 0x01, 0x00, 0x00, 0x00]);
+        value = 1.235236987000989e+26;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(lengthInMeta, offset++);
+        data.writeUInt8(precision, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the BITNTYPE token correctly', function(done) {
+        dataLength = 1;
+        typeid = 0x68;
+        const value_sent = 0;
+        value = false;
+
+        data = Buffer.alloc(27);
+        tempBuff.copy(data);
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        data.writeUInt8(value_sent, offset);
+
+        const token = {};
+        addListners(done, token);
+
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {
@@ -328,7 +437,6 @@ describe('Parsing a RETURNVALUE token', function() {
         reader = new Reader(0x72090002);
         offset = tempOffset;
       });
-
 
       function addListners(done, token) {
         reader.on('data', function(retValToken) {

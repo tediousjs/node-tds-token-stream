@@ -113,6 +113,27 @@ const Reader = module.exports = class Reader extends Transform {
     return this.buffer.readDoubleLE(this.position + offset);
   }
 
+  readUNumeric64LE(offset: number) {
+    const low = this.buffer.readUInt32LE(this.position + offset);
+    const high = this.buffer.readUInt32LE(this.position + offset + 4);
+    return (0x100000000 * high) + low;
+  }
+
+  readUNumeric96LE(offset: number) {
+    const dword1 = this.buffer.readUInt32LE(this.position + offset);
+    const dword2 = this.buffer.readUInt32LE(this.position + offset + 4);
+    const dword3 = this.buffer.readUInt32LE(this.position + offset + 8);
+    return (dword1 + (0x100000000 * dword2) + (0x100000000 * 0x100000000 * dword3));
+  }
+
+  readUNumeric128LE(offset: number) {
+    const dword1 = this.buffer.readUInt32LE(this.position + offset);
+    const dword2 = this.buffer.readUInt32LE(this.position + offset + 4);
+    const dword3 = this.buffer.readUInt32LE(this.position + offset + 8);
+    const dword4 = this.buffer.readUInt32LE(this.position + offset + 12);
+    return (dword1 + (0x100000000 * dword2) + (0x100000000 * 0x100000000 * dword3) + (0x100000000 * 0x100000000 * 0x100000000 * dword4));
+  }
+
   _transform(chunk: Buffer | string, encoding: string | null, callback: (error: ?Error) => void) {
     if (!(chunk instanceof Buffer)) {
       return callback(new Error('Expected Buffer'));
