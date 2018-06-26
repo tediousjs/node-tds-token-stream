@@ -187,6 +187,26 @@ function readValue(reader: Reader) {
       }
       token.value = (value * sign) / Math.pow(10, token.typeInfo.scale);
       return reader.stash.pop();
+
+    case 'FloatN':
+      if (dataLength === 0) {
+        token.value = null;
+        return reader.stash.pop();
+      }
+      switch (dataLength) {
+        case 4:
+          token.value = reader.readFloatLE(0);
+          reader.consumeBytes(4);
+          break;
+        case 8:
+          token.value = reader.readDoubleLE(0);
+          reader.consumeBytes(8);
+          break;
+        default:
+          throw new Error('Unsupported dataLength ' + dataLength + ' for FloatN');
+      }
+      return reader.stash.pop();
+
     default:
       console.log('readValue not implemented');
   }

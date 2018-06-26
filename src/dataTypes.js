@@ -92,6 +92,13 @@ const type = {
     LengthOfDataLength: 1,
     hasPrecision: true,
     hasScale: true
+  },
+
+  [0x6D]: {
+    id: 0x6D,
+    type: 'FLTN',
+    name: 'FloatN',
+    LengthOfDataLength: 1
   }
 };
 

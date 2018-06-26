@@ -418,6 +418,56 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end(data);
       });
 
+      it('should parse the FLTN(7) token correctly', function(done) {
+        data = Buffer.alloc(30);
+        tempBuff.copy(data);
+
+        typeid = 0x6D;
+        dataLength = 4;
+
+        const valueAsBuffer = Buffer.from([0x40, 0x88, 0x59, 0xC7]);
+        value = -55688.25;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the FLTN(15) token correctly', function(done) {
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0x6D;
+        dataLength = 8;
+
+        const valueAsBuffer = Buffer.from([0x00, 0x00, 0x00, 0x20, 0x08, 0x31, 0xEB, 0x40]);
+        value = 55688.25390625;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+
+        addListners(done, token);
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {

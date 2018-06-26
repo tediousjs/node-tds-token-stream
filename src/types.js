@@ -9,7 +9,7 @@ type typeInfoId =
   0x1F | 0x30 | 0x32 | 0x34 | 0x38 | 0x3A | 0x3B | 0x3C | 0x3D | 0x3E | 0x7A | 0x7F |
 
   // BYTELEN_TYPE
-  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C |
+  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C | 0X6D |
 
   // USHORTLEN_TYPE
   0xE7 |
@@ -158,6 +158,8 @@ function readTypeId(reader: Reader) {
       return readBitNType;
 
     case 0x6D: // FLTNTYPE
+      return readFloatNType;
+
     case 0x6E: // MONEYNTYPE
     case 0x6F: // DATETIMNTYPE
     case 0x28: // DATENTYPE
@@ -256,6 +258,20 @@ function readDecimalNumericType(id, reader: Reader) {
 
   const next = reader.stash.pop();
   reader.stash.push(new TypeInfo(id, dataLength, precision, scale));
+  return next;
+}
+
+function readFloatNType(reader: Reader) {
+  if (!reader.bytesAvailable(1)) {
+    return;
+  }
+  const dataLength = reader.readUInt8(0);
+  reader.consumeBytes(1);
+  if (dataLength !== 4 && dataLength !== 8) {
+    throw new Error('Invalid data length for FLTNTYPE');
+  }
+  const next = reader.stash.pop();
+  reader.stash.push(new TypeInfo(0x6D, dataLength));
   return next;
 }
 
