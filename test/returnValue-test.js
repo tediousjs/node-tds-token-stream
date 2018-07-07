@@ -468,6 +468,54 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end(data);
       });
 
+      it('should parse the MONEYNTYPE(smallmoney) token correctly', function(done) {
+        data = Buffer.alloc(30);
+        tempBuff.copy(data);
+
+        typeid = 0x6E;
+        dataLength = 4;
+
+        const valueAsBuffer = Buffer.from([0x00, 0x00, 0x00, 0x80]);
+        value = -214748.3648;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the MONEYNTYPE(money) token correctly', function(done) {
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0x6E;
+        dataLength = 8;
+
+        const valueAsBuffer = Buffer.from([0x26, 0x05, 0xF4, 0xFF, 0x01, 0x00, 0x1A, 0x7D]);
+        value = -337203685477.5807;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {

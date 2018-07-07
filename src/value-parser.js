@@ -207,6 +207,22 @@ function readValue(reader: Reader) {
       }
       return reader.stash.pop();
 
+    case 'MoneyN':
+      if (dataLength === 0) {
+        token.value = null;
+        return reader.stash.pop();
+      }
+      switch (dataLength) {
+        case 4:
+          token.value = reader.readInt32LE(0) / MONEY_DIVISOR;
+          reader.consumeBytes(4);
+          return reader.stash.pop();
+        case 8:
+          return readMoney;
+        default:
+          throw new Error('Unsupported dataLength ' + dataLength + ' for MoneyN');
+      }
+
     default:
       console.log('readValue not implemented');
   }
@@ -241,7 +257,7 @@ function readDateTime(reader: Reader) {
 
 function readMoney(reader: Reader) {
   const token = reader.stash[reader.stash.length - 2];
-  const high = reader.readUInt32LE(0);
+  const high = reader.readInt32LE(0);
   const low = reader.readUInt32LE(4);
   token.value = (low + (0x100000000 * high)) / MONEY_DIVISOR;
   reader.consumeBytes(8);

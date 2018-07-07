@@ -99,6 +99,13 @@ const type = {
     type: 'FLTN',
     name: 'FloatN',
     LengthOfDataLength: 1
+  },
+
+  [0x6E]: {
+    id: 0x6E,
+    type: 'MONEYN',
+    name: 'MoneyN',
+    LengthOfDataLength: 1
   }
 };
 

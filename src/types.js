@@ -9,7 +9,7 @@ type typeInfoId =
   0x1F | 0x30 | 0x32 | 0x34 | 0x38 | 0x3A | 0x3B | 0x3C | 0x3D | 0x3E | 0x7A | 0x7F |
 
   // BYTELEN_TYPE
-  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C | 0X6D |
+  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C | 0X6D | 0x6E |
 
   // USHORTLEN_TYPE
   0xE7 |
@@ -145,8 +145,6 @@ function readTypeId(reader: Reader) {
     case 0x24: // GUIDTYPE
       return readGuidType;
 
-    case 0x26: // INTNTYPE
-      return readIntNType;
 
     case 0x37: // DECIMALTYPE
     case 0x3F: // NUMERICTYPE
@@ -154,13 +152,12 @@ function readTypeId(reader: Reader) {
     case 0x6C: // NUMERICNTYPE
       return readDecimalNumericType(id, reader);
 
+    case 0x26: // INTNTYPE
     case 0x68: // BITNTYPE
-      return readBitNType;
-
     case 0x6D: // FLTNTYPE
-      return readFloatNType;
-
     case 0x6E: // MONEYNTYPE
+      return readByteLenType(id, reader);
+
     case 0x6F: // DATETIMNTYPE
     case 0x28: // DATENTYPE
     case 0x29: // TIMENTYPE
@@ -217,35 +214,6 @@ function readGuidType(reader: Reader) {
   return next;
 }
 
-function readBitNType(reader: Reader) {
-  if (!reader.bytesAvailable(1)) {
-    return;
-  }
-  const dataLength = reader.readUInt8(0);
-  reader.consumeBytes(1);
-
-  const next = reader.stash.pop();
-  reader.stash.push(new TypeInfo(0x68, dataLength));
-  return next;
-}
-
-function readIntNType(reader: Reader) {
-  if (!reader.bytesAvailable(1)) {
-    return;
-  }
-
-  const dataLength = reader.readUInt8(0);
-  reader.consumeBytes(1);
-
-  if (dataLength != 0x01 && dataLength != 0x02 && dataLength != 0x04 && dataLength != 0x08) {
-    throw new Error('Invalid data length for INTNTYPE');
-  }
-
-  const next = reader.stash.pop();
-  reader.stash.push(new TypeInfo(0x26, dataLength));
-  return next;
-}
-
 function readDecimalNumericType(id, reader: Reader) {
   if (!reader.bytesAvailable(3)) {
     return;
@@ -261,17 +229,37 @@ function readDecimalNumericType(id, reader: Reader) {
   return next;
 }
 
-function readFloatNType(reader: Reader) {
+function readByteLenType(id, reader: Reader) {
   if (!reader.bytesAvailable(1)) {
     return;
   }
   const dataLength = reader.readUInt8(0);
   reader.consumeBytes(1);
-  if (dataLength !== 4 && dataLength !== 8) {
-    throw new Error('Invalid data length for FLTNTYPE');
+
+  switch (id) {
+    case 0x26:
+      if (dataLength != 0x01 && dataLength != 0x02 && dataLength != 0x04 && dataLength != 0x08) {
+        throw new Error('Invalid data length for INTNTYPE');
+      }
+      break;
+    case 0x68:
+      if (dataLength != 0x00 && dataLength != 0x01) {
+        throw new Error('Invalid data length for BITNTYPE');
+      }
+      break;
+    case 0x6D:
+      if (dataLength !== 4 && dataLength !== 8) {
+        throw new Error('Invalid data length for FLTNTYPE');
+      }
+      break;
+    case 0x6E:
+      if (dataLength !== 4 && dataLength !== 8) {
+        throw new Error('Invalid data length for MONEYNTYPE');
+      }
+      break;
   }
   const next = reader.stash.pop();
-  reader.stash.push(new TypeInfo(0x6D, dataLength));
+  reader.stash.push(new TypeInfo(id, dataLength));
   return next;
 }
 
