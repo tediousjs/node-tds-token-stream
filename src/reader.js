@@ -83,6 +83,12 @@ const Reader = module.exports = class Reader extends Transform {
     return this.buffer.readInt16LE(this.position + offset);
   }
 
+  readUInt24LE(offset: number) : number {
+    const low = this.buffer.readUInt16LE(this.position + offset);
+    const high = this.buffer.readUInt8(this.position + offset + 2);
+    return low | (high << 16);
+  }
+
   readUInt32LE(offset: number) : number {
     return this.buffer.readUInt32LE(this.position + offset);
   }

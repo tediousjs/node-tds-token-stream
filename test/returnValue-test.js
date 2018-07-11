@@ -142,7 +142,14 @@ describe('Parsing a RETURNVALUE token', function() {
           assert.strictEqual(token.status, status);
           assert.strictEqual(token.userType, userType);
           assert.strictEqual(token.typeInfo.id, typeid);
-          assert.strictEqual(token.value, value);
+
+          if ((value !== null) && typeid == 0x28) {
+            assert.equalDate(token.value, value);
+          }
+          else {
+            assert.strictEqual(token.value, value);
+          }
+
           done();
         });
       }
@@ -516,6 +523,53 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end(data);
       });
 
+      it('should parse the DATENTYPE token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(28);
+        tempBuff.copy(data);
+
+        typeid = 0x28;
+        dataLength = 3;
+
+        const valueAsBuffer = Buffer.from([0x0A, 0x49, 0x0B]);
+        value = new Date('12-10-25Z');
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the DATENTYPE(null) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(25);
+        tempBuff.copy(data);
+
+        typeid = 0x28;
+        dataLength = 0;
+        value = null;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
     });
 
     describe('test FIXEDLENTYPE', function() {

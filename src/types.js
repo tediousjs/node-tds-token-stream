@@ -9,7 +9,7 @@ type typeInfoId =
   0x1F | 0x30 | 0x32 | 0x34 | 0x38 | 0x3A | 0x3B | 0x3C | 0x3D | 0x3E | 0x7A | 0x7F |
 
   // BYTELEN_TYPE
-  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C | 0X6D | 0x6E |
+  0x24 | 0x26 | 0x37 | 0x3F | 0x68 | 0X6A | 0X6C | 0X6D | 0x6E | 0x28 |
 
   // USHORTLEN_TYPE
   0xE7 |
@@ -158,8 +158,11 @@ function readTypeId(reader: Reader) {
     case 0x6E: // MONEYNTYPE
       return readByteLenType(id, reader);
 
-    case 0x6F: // DATETIMNTYPE
     case 0x28: // DATENTYPE
+    // TODO: change the function name to something generic?
+      return readFixedLengthType(id, 0, reader);
+
+    case 0x6F: // DATETIMNTYPE
     case 0x29: // TIMENTYPE
     case 0x2A: // DATETIME2NTYPE
     case 0x2B: // DATETIMEOFFSETNTYPE

@@ -106,6 +106,13 @@ const type = {
     type: 'MONEYN',
     name: 'MoneyN',
     LengthOfDataLength: 1
+  },
+
+  [0x28]: {
+    id: 0x28,
+    type: 'DATEN',
+    name: 'Date',
+    LengthOfDataLength: 1
   }
 };
 

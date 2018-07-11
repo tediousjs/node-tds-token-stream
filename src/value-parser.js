@@ -189,11 +189,10 @@ function readValue(reader: Reader) {
       return reader.stash.pop();
 
     case 'FloatN':
-      if (dataLength === 0) {
-        token.value = null;
-        return reader.stash.pop();
-      }
       switch (dataLength) {
+        case 0:
+          token.value = null;
+          return reader.stash.pop();
         case 4:
           token.value = reader.readFloatLE(0);
           reader.consumeBytes(4);
@@ -208,11 +207,10 @@ function readValue(reader: Reader) {
       return reader.stash.pop();
 
     case 'MoneyN':
-      if (dataLength === 0) {
-        token.value = null;
-        return reader.stash.pop();
-      }
       switch (dataLength) {
+        case 0:
+          token.value = null;
+          return reader.stash.pop();
         case 4:
           token.value = reader.readInt32LE(0) / MONEY_DIVISOR;
           reader.consumeBytes(4);
@@ -221,6 +219,17 @@ function readValue(reader: Reader) {
           return readMoney;
         default:
           throw new Error('Unsupported dataLength ' + dataLength + ' for MoneyN');
+      }
+
+    case 'Date':
+      switch (dataLength) {
+        case 0:
+          token.value = null;
+          return reader.stash.pop();
+        case 3:
+          return readDate;
+        default:
+          throw new Error('Unsupported dataLength ' + dataLength + ' for Date');
       }
 
     default:
@@ -252,6 +261,19 @@ function readDateTime(reader: Reader) {
     token.value = new Date(1900, 0, 1 + days, 0, 0, 0, milliseconds);
   }
   reader.consumeBytes(8);
+  return reader.stash.pop();
+}
+
+
+function readDate(reader: Reader) {
+  const token = reader.stash[reader.stash.length - 2];
+  const days = reader.readUInt24LE(0);
+  if (reader.options.useUTC) {
+    token.value = new Date(Date.UTC(2000, 0, days - 730118));
+  } else {
+    token.value = new Date(2000, 0, days - 730118);
+  }
+  reader.consumeBytes(3);
   return reader.stash.pop();
 }
 
