@@ -1,9 +1,9 @@
 /* @flow */
 
 const chai = require('chai');
-const assert = chai.assert;
 const chai_datetime = require('chai-datetime');
 chai.use(chai_datetime);
+const assert = chai.assert;
 
 const Reader = require('../src').Reader;
 const ReturnValueToken = require('../src/tokens/returnvalue');
@@ -130,7 +130,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset = tempOffset;
       });
 
-      function addListners(done, token) {
+      function addListners(done, token, nanoSec) {
         reader.on('data', function(retValToken) {
           assert.instanceOf(retValToken, ReturnValueToken);
           token = retValToken;
@@ -145,6 +145,10 @@ describe('Parsing a RETURNVALUE token', function() {
 
           if ((value !== null) && typeid == 0x28) {
             assert.equalDate(token.value, value);
+            if (nanoSec)
+            {assert.strictEqual(token.value.nanosecondsDelta, nanoSec);}
+          } else if ((value !== null) && typeid == 0x29) {
+            assert.equalTime(token.value, value);
           }
           else {
             assert.strictEqual(token.value, value);
@@ -570,6 +574,92 @@ describe('Parsing a RETURNVALUE token', function() {
         addListners(done, token);
         reader.end(data);
       });
+
+      it('should parse the TIMETYPE(2) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(29);
+        tempBuff.copy(data);
+
+        typeid = 0x29;
+        dataLength = 3;
+        const scale = 2;
+
+        const valueAsBuffer = Buffer.from([0x04, 0x1D, 0x45]);
+        value = new Date(Date.UTC(1970, 0, 1, 12, 34, 54, 120));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the TIMETYPE(3) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(30);
+        tempBuff.copy(data);
+
+        typeid = 0x29;
+        dataLength = 4;
+        const scale = 3;
+
+        const valueAsBuffer = Buffer.from([0x2F, 0x22, 0xB3, 0x02]);
+        value = new Date(Date.UTC(1970, 0, 1, 12, 34, 54, 127));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the TIMETYPE(7) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(31);
+        tempBuff.copy(data);
+
+        typeid = 0x29;
+        dataLength = 5;
+        const scale = 7;
+
+        // declare @tm time(7); set @tm = '12:34:54.1275523Z'
+        const valueAsBuffer = Buffer.from([0x83, 0x61, 0x67, 0x75, 0x69]);
+
+        value = new Date(Date.UTC(1970, 0, 1, 12, 34, 54, 127));
+        const nanoSec = 0.0005523;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, nanoSec);
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {
@@ -747,30 +837,6 @@ describe('Parsing a RETURNVALUE token', function() {
         const days = 43225; // days since 1900-01-01
         const minutes = 763;
         value = new Date('2018-05-07T12:43:00.000Z');
-
-        data = Buffer.alloc(28);
-        tempBuff.copy(data);
-        // TYPE_INFO
-        data.writeUInt8(typeid, offset++);
-
-        // TYPE_VARBYTE
-        data.writeUInt16LE(days, offset);
-        data.writeUInt16LE(minutes, offset + 2);
-
-        const token = {};
-        addListners(done, token);
-
-        reader.end(data);
-
-      });
-
-      it('should parse the DATETIM4TYPE/SmallDateTime token correctly : local time', function(done) {
-        reader.options = {};
-        reader.options.useUTC = false;
-        typeid = 0x3A;
-        const days = 43225;
-        const minutes = 763;
-        value = new Date('2018-05-07T12:43:00.000');
 
         data = Buffer.alloc(28);
         tempBuff.copy(data);

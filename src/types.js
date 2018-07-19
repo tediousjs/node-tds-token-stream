@@ -191,9 +191,8 @@ function readDataLength(reader: Reader) {
   const type = TYPE[token.id];
   if ((token.id & 0x30) === 0x20) { // VARLEN_TYPE
     if (type.dataLengthFromScale) {
-      const next = reader.stash.pop();
       reader.stash.push(token);
-      return next;
+      return readScale;
     } else if (type.fixedDataLength) {
       const next = reader.stash.pop();
       reader.stash.push(token);

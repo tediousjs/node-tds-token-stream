@@ -232,6 +232,13 @@ function readValue(reader: Reader) {
           throw new Error('Unsupported dataLength ' + dataLength + ' for Date');
       }
 
+    case 'Time':
+      if (dataLength === 0) {
+        token.value = null;
+        return reader.stash.pop();
+      } else {
+        return readTime(dataLength, reader);
+      }
     default:
       console.log('readValue not implemented');
   }
@@ -264,6 +271,47 @@ function readDateTime(reader: Reader) {
   return reader.stash.pop();
 }
 
+function readTime(dataLength: number, reader: Reader) {
+  const token = reader.stash[reader.stash.length - 2];
+  let value;
+  switch (dataLength) {
+    case 3:
+      value = reader.readUInt24LE(0);
+      reader.consumeBytes(3);
+      break;
+    case 4:
+      value = reader.readUInt32LE(0);
+      reader.consumeBytes(4);
+      break;
+    case 5:
+      value = reader.readUInt40LE(0);
+      reader.consumeBytes(5);
+      break;
+    default:
+      throw new Error('Unknown length for temporal datatype');
+  }
+  const scale = token.typeInfo.scale;
+
+  if (scale < 7) {
+    for (let i = scale; i < 7; i++) {
+      value *= 10;
+    }
+  }
+  let date;
+  if (reader.options.useUTC) {
+    date = new Date(Date.UTC(1970, 0, 1, 0, 0, 0, value / 10000));
+  } else {
+    date = new Date(1970, 0, 1, 0, 0, 0, value / 10000);
+  }
+
+  // $FlowFixMe: suppressing this error until https://github.com/facebook/flow/issues/396 is fixed
+  Object.defineProperty(date, 'nanosecondsDelta', {
+    enumerable: false,
+    value: (value % 10000) / Math.pow(10, 7)
+  });
+  token.value = date;
+  return reader.stash.pop();
+}
 
 function readDate(reader: Reader) {
   const token = reader.stash[reader.stash.length - 2];

@@ -112,7 +112,17 @@ const type = {
     id: 0x28,
     type: 'DATEN',
     name: 'Date',
-    LengthOfDataLength: 1
+    LengthOfDataLength: 1,
+    fixedDataLength: 3
+  },
+
+  [0x29]: {
+    id: 0x29,
+    type: 'TIMEN',
+    name: 'Time',
+    hasScale: true,
+    LengthOfDataLength: 1,
+    dataLengthFromScale: true
   }
 };
 
