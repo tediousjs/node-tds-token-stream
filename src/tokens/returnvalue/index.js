@@ -9,7 +9,7 @@ class ReturnValueToken extends Token {
   status: ?number
   userType: ?number
   typeInfo: ?TypeInfo
-  valueLength: ?number
+  valueLength: ?number // TODO: is it used?
   value: ?any
 
   constructor() {
