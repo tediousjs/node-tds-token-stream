@@ -70,21 +70,18 @@ const type = {
     name: 'UniqueIdentifier',
     LengthOfDataLength: 1
   },
-
   [0x26]: {
     id: 0x26,
     type: 'INTN',
     name: 'IntN',
     LengthOfDataLength: 1
   },
-
   [0x68]: {
     id: 0x68,
     type: 'BITN',
     name: 'BitN',
     LengthOfDataLength: 1
   },
-
   [0x6C]: {
     id: 0x6C,
     type: 'NUMERICN',
@@ -93,21 +90,18 @@ const type = {
     hasPrecision: true,
     hasScale: true
   },
-
   [0x6D]: {
     id: 0x6D,
     type: 'FLTN',
     name: 'FloatN',
     LengthOfDataLength: 1
   },
-
   [0x6E]: {
     id: 0x6E,
     type: 'MONEYN',
     name: 'MoneyN',
     LengthOfDataLength: 1
   },
-
   [0x28]: {
     id: 0x28,
     type: 'DATEN',
@@ -115,11 +109,32 @@ const type = {
     LengthOfDataLength: 1,
     fixedDataLength: 3
   },
-
   [0x29]: {
     id: 0x29,
     type: 'TIMEN',
     name: 'Time',
+    hasScale: true,
+    LengthOfDataLength: 1,
+    dataLengthFromScale: true
+  },
+  [0x6F]: {
+    id: 0x6F,
+    type: 'DATETIMN',
+    name: 'DateTimeN',
+    LengthOfDataLength: 1
+  },
+  [0x2A]: {
+    id: 0x2A,
+    type: 'DATETIME2N',
+    name: 'DateTime2',
+    hasScale: true,
+    LengthOfDataLength: 1,
+    dataLengthFromScale: true
+  },
+  [0x2B]: {
+    id: 0x2B,
+    type: 'DATETIMEOFFSETN',
+    name: 'DateTimeOffset',
     hasScale: true,
     LengthOfDataLength: 1,
     dataLengthFromScale: true

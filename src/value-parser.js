@@ -227,7 +227,7 @@ function readValue(reader: Reader) {
           token.value = null;
           return reader.stash.pop();
         case 3:
-          return readDate;
+          return readDateN;
         default:
           throw new Error('Unsupported dataLength ' + dataLength + ' for Date');
       }
@@ -237,8 +237,36 @@ function readValue(reader: Reader) {
         token.value = null;
         return reader.stash.pop();
       } else {
-        return readTime(dataLength, reader);
+        return readTimeN(dataLength, reader);
       }
+
+    case 'DateTimeN':
+      switch (dataLength) {
+        case 0:
+          token.value = null;
+          return reader.stash.pop();
+        case 4:
+          return readSmallDateTime;
+        case 8:
+          return readDateTime;
+      }
+
+    case 'DateTime2':
+      if (dataLength === 0) {
+        token.value = null;
+        return reader.stash.pop();
+      } else {
+        return readDateTime2N(dataLength, reader);
+      }
+
+    case 'DateTimeOffset':
+      if (dataLength === 0) {
+        token.value = null;
+        return reader.stash.pop();
+      } else {
+        return readDateTimeOffset(dataLength, reader);
+      }
+
     default:
       console.log('readValue not implemented');
   }
@@ -271,8 +299,13 @@ function readDateTime(reader: Reader) {
   return reader.stash.pop();
 }
 
-function readTime(dataLength: number, reader: Reader) {
+function readTimeN(dataLength: number, reader: Reader) {
   const token = reader.stash[reader.stash.length - 2];
+  token.value = readTime(dataLength, token.typeInfo.scale, reader);
+  return reader.stash.pop();
+}
+
+function readTime(dataLength: number, scale: number, reader: Reader) {
   let value;
   switch (dataLength) {
     case 3:
@@ -288,9 +321,8 @@ function readTime(dataLength: number, reader: Reader) {
       reader.consumeBytes(5);
       break;
     default:
-      throw new Error('Unknown length for temporal datatype');
+      throw new Error(`Unknown length ${dataLength} for temporal datatype`);
   }
-  const scale = token.typeInfo.scale;
 
   if (scale < 7) {
     for (let i = scale; i < 7; i++) {
@@ -309,20 +341,52 @@ function readTime(dataLength: number, reader: Reader) {
     enumerable: false,
     value: (value % 10000) / Math.pow(10, 7)
   });
+  return date;
+}
+
+function readDateN(reader: Reader) {
+  const token = reader.stash[reader.stash.length - 2];
+  token.value = readDate(undefined, reader.options.useUTC, reader);
+  return reader.stash.pop();
+}
+
+function readDate(time: ?Date, useUTC: boolean, reader: Reader) {
+  let value;
+  const days = reader.readUInt24LE(0);
+  if (useUTC) {
+    value = new Date(Date.UTC(2000, 0, days - 730118, 0, 0, 0, time ? +time : 0));
+  } else {
+    value = new Date(2000, 0, days - 730118, time ? (time.getHours(), time.getMinutes(), time.getSeconds(), time.getMilliseconds()) : 0);
+  }
+  reader.consumeBytes(3);
+  return value;
+}
+
+function readDateTime2N(dataLength: number, reader: Reader) {
+  const token = reader.stash[reader.stash.length - 2];
+  token.value = readDateTime2(dataLength - 3, token.typeInfo.scale, reader.options.useUTC, reader);
+  return reader.stash.pop();
+}
+
+function readDateTimeOffset(dataLength: number, reader: Reader) {
+  const token = reader.stash[reader.stash.length - 2];
+  const date = readDateTime2(dataLength - 5, token.typeInfo.scale, true, reader);
+  reader.readInt16LE(0); // TODO: add implementation to handle offset
+  reader.consumeBytes(2);
   token.value = date;
   return reader.stash.pop();
 }
 
-function readDate(reader: Reader) {
-  const token = reader.stash[reader.stash.length - 2];
-  const days = reader.readUInt24LE(0);
-  if (reader.options.useUTC) {
-    token.value = new Date(Date.UTC(2000, 0, days - 730118));
-  } else {
-    token.value = new Date(2000, 0, days - 730118);
-  }
-  reader.consumeBytes(3);
-  return reader.stash.pop();
+function readDateTime2(dataLength: number, scale: number, useUTC: boolean, reader: Reader) {
+  const time = readTime(dataLength, scale, reader);
+  const date = readDate(time, useUTC, reader);
+  // $FlowFixMe
+  Object.defineProperty(date, 'nanosecondsDelta', {
+    enumerable: false,
+    // $FlowFixMe
+    value: time.nanosecondsDelta
+  });
+  return date;
 }
 
 function readMoney(reader: Reader) {

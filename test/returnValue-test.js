@@ -143,12 +143,15 @@ describe('Parsing a RETURNVALUE token', function() {
           assert.strictEqual(token.userType, userType);
           assert.strictEqual(token.typeInfo.id, typeid);
 
-          if ((value !== null) && typeid == 0x28) {
+          if ((value !== null) && (typeid == 0x28 || typeid == 0x6F)) {
             assert.equalDate(token.value, value);
-            if (nanoSec)
-            {assert.strictEqual(token.value.nanosecondsDelta, nanoSec);}
+            if (nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, nanoSec); }
           } else if ((value !== null) && typeid == 0x29) {
             assert.equalTime(token.value, value);
+          } else if ((value !== null) && (typeid == 0x2A || typeid == 0x2B)) {
+            assert.equalDate(token.value, value);
+            assert.equalTime(token.value, value);
+            if (nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, nanoSec); }
           }
           else {
             assert.strictEqual(token.value, value);
@@ -660,6 +663,230 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end(data);
       });
 
+      it('should parse the DATETIMETYPE token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0x6F;
+        dataLength = 8;
+
+        // declare @tm datetime; set @tm = '2007-05-08T12:35:29.123Z'
+        const valueAsBuffer = Buffer.from([0x28, 0x99, 0x00, 0x00, 0x11, 0x80, 0xCF, 0x00]);
+
+        value = new Date(Date.UTC(2007, 4, 8, 12, 35, 29, 123));
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIMETYPE(smalldatetime) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(30);
+        tempBuff.copy(data);
+
+        typeid = 0x6F;
+        dataLength = 4;
+
+        // declare @tm smalldatetime; set @tm = '2007-05-08T12:35:29.123Z'
+        const valueAsBuffer = Buffer.from([0x28, 0x99, 0xF3, 0x02]);
+
+        value = new Date(Date.UTC(2007, 4, 8, 12, 35));
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(dataLength, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIME2NTYPE(7) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0x2A;
+        dataLength = 8;
+        const scale = 7;
+        const nanoSec = 0.0004567;
+
+        const valueAsBuffer = Buffer.from([0x07, 0x55, 0x43, 0x8A, 0x69, 0x83, 0x2E, 0x0B]);
+        value = new Date(Date.UTC(2007, 4, 8, 12, 35, 29, 123));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, nanoSec);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIME2NTYPE(4) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(33);
+        tempBuff.copy(data);
+
+        typeid = 0x2A;
+        dataLength = 7;
+        const scale = 4;
+        const nanoSec = 0.0006;
+
+        const valueAsBuffer = Buffer.from([0xE4, 0xAC, 0x04, 0x1B, 0x83, 0x2E, 0x0B]);
+        value = new Date(Date.UTC(2007, 4, 8, 12, 35, 29, 123));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, nanoSec);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIME2NTYPE token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(32);
+        tempBuff.copy(data);
+
+        typeid = 0x2A;
+        dataLength = 6;
+        const scale = 0;
+        const nanoSec = 0;
+
+        const valueAsBuffer = Buffer.from([0x11, 0xB1, 0x00, 0x83, 0x2E, 0x0B]);
+        value = new Date(Date.UTC(2007, 4, 8, 12, 35, 29));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, nanoSec);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIMEOFFSETNTYPE token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0x2B;
+        dataLength = 8;
+        const scale = 0;
+        const nanoSec = 0;
+
+        const valueAsBuffer = Buffer.from([0x3A, 0xA2, 0x00, 0x0A, 0x49, 0x0B, 0x3C, 0x00]);
+        // select @count = '12-10-25 12:32:10.000 +01:00'
+        value = new Date(Date.UTC(2025, 11, 10, 11, 32, 10));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, nanoSec);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIMEOFFSETNTYPE(7) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(36);
+        tempBuff.copy(data);
+
+        typeid = 0x2B;
+        dataLength = 10;
+        const scale = 7;
+        const nanoSec = 0.0008741;
+
+        const valueAsBuffer = Buffer.from([0x35, 0x36, 0x00, 0xB2, 0x60, 0x0A, 0x49, 0x0B, 0x3C, 0x00]);
+        // select @count = '12-10-25 12:32:10.3218741 +01:00'
+        value = new Date(Date.UTC(2025, 11, 10, 11, 32, 10, 321));
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, nanoSec);
+        reader.end(data);
+      });
+
+      it('should parse the DATETIMEOFFSETNTYPE(null) token correctly', function(done) {
+        reader.options = {};
+        reader.options.useUTC = true;
+
+        data = Buffer.alloc(26);
+        tempBuff.copy(data);
+
+        typeid = 0x2B;
+        dataLength = 0;
+        const scale = 0;
+
+        value = null;
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt8(scale, offset++);
+
+        // TYPE_VARBYTE
+        data.writeUInt8(dataLength, offset++);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
     });
 
     describe('test FIXEDLENTYPE', function() {
