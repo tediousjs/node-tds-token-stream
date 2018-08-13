@@ -1,12 +1,17 @@
 /* @flow */
 
+const iconv = require('iconv-lite');
 type readStep = (reader: Reader) =>?readStep;
+import type { Collation } from './types';
+
 const Reader = require('./reader');
 const TYPE = require('./dataTypes').TYPE;
 const guidParser = require('./guid-parser');
 const MAX = (1 << 16) - 1;
 const THREE_AND_A_THIRD = 3 + (1 / 3);
 const MONEY_DIVISOR = 10000;
+const NULL = (1 << 16) - 1;
+const DEFAULT_ENCODING = 'utf8';
 
 function valueParse(next: readStep, reader: Reader) {
   reader.stash.push(next);
@@ -267,6 +272,15 @@ function readValue(reader: Reader) {
         return readDateTimeOffset(dataLength, reader);
       }
 
+    case 'Char':
+      const collation: Collation = token.typeInfo.collation;
+      const codepage = collation.codepage;
+      if (token.dataLength === MAX) {
+        // TODO: PLP support
+      } else {
+        return readChars(dataLength, codepage, NULL, reader);
+      }
+
     default:
       console.log('readValue not implemented');
   }
@@ -398,4 +412,19 @@ function readMoney(reader: Reader) {
   return reader.stash.pop();
 }
 
+function readChars(dataLength: number, codepage: string, nullValue: ?any, reader: Reader) {
+  const token = reader.stash[reader.stash.length - 2];
+  if (codepage == null) {
+    codepage = DEFAULT_ENCODING;
+  }
+  if (dataLength === nullValue) {
+    token.value = null;
+  }
+  else {
+    const data = reader.readBuffer(0, dataLength);
+    token.value = iconv.decode(data, codepage);
+    reader.consumeBytes(dataLength);
+  }
+  return reader.stash.pop();
+}
 module.exports.valueParse = valueParse;

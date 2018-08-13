@@ -112,7 +112,7 @@ describe('Parsing a RETURNVALUE token', function() {
 
     describe('test VARLENTYPE-BYTELEN', function() {
 
-      let reader, data, paramOrdinal, paramName, status, userType, flag, typeid, dataLength, value, offset, tempBuff, tempOffset;
+      let reader, data, paramOrdinal, paramName, status, userType, flag, typeid, dataLength, value, offset, tempBuff, tempOffset, collation;
 
       before(function() {
         paramOrdinal = 1;
@@ -130,7 +130,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset = tempOffset;
       });
 
-      function addListners(done, token, nanoSec) {
+      function addListners(done, token, options) {
         reader.on('data', function(retValToken) {
           assert.instanceOf(retValToken, ReturnValueToken);
           token = retValToken;
@@ -145,16 +145,21 @@ describe('Parsing a RETURNVALUE token', function() {
 
           if ((value !== null) && (typeid == 0x28 || typeid == 0x6F)) {
             assert.equalDate(token.value, value);
-            if (nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, nanoSec); }
+            if (options && options.nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, options.nanoSec); }
           } else if ((value !== null) && typeid == 0x29) {
             assert.equalTime(token.value, value);
           } else if ((value !== null) && (typeid == 0x2A || typeid == 0x2B)) {
             assert.equalDate(token.value, value);
             assert.equalTime(token.value, value);
-            if (nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, nanoSec); }
+            if (options && options.nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, options.nanoSec); }
           }
           else {
             assert.strictEqual(token.value, value);
+          }
+
+          if ((value !== null) && (typeid == 0xAF && options && options.collation)) {
+            assert.strictEqual(token.typeInfo.collation.localeId, options.collation.LCID);
+            assert.strictEqual(token.typeInfo.collation.codepage, options.collation.codepage);
           }
 
           done();
@@ -310,7 +315,6 @@ describe('Parsing a RETURNVALUE token', function() {
         value = null;
 
         tempBuff.copy(data);
-
         // TYPE_INFO
         data.writeUInt8(typeid, offset++);
         data.writeUInt8(dataLength, offset++);
@@ -659,7 +663,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset += dataLength;
 
         const token = {};
-        addListners(done, token, nanoSec);
+        addListners(done, token, {nanoSec: nanoSec});
         reader.end(data);
       });
 
@@ -745,7 +749,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset += dataLength;
 
         const token = {};
-        addListners(done, token, nanoSec);
+        addListners(done, token, {nanoSec: nanoSec});
         reader.end(data);
       });
 
@@ -773,7 +777,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset += dataLength;
 
         const token = {};
-        addListners(done, token, nanoSec);
+        addListners(done, token, {nanoSec: nanoSec});
         reader.end(data);
       });
 
@@ -801,7 +805,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset += dataLength;
 
         const token = {};
-        addListners(done, token, nanoSec);
+        addListners(done, token, {nanoSec: nanoSec});
         reader.end(data);
       });
 
@@ -830,7 +834,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset += dataLength;
 
         const token = {};
-        addListners(done, token, nanoSec);
+        addListners(done, token, {nanoSec: nanoSec});
         reader.end(data);
       });
 
@@ -859,7 +863,7 @@ describe('Parsing a RETURNVALUE token', function() {
         offset += dataLength;
 
         const token = {};
-        addListners(done, token, nanoSec);
+        addListners(done, token, {nanoSec: nanoSec});
         reader.end(data);
       });
 
@@ -887,6 +891,79 @@ describe('Parsing a RETURNVALUE token', function() {
         addListners(done, token);
         reader.end(data);
       });
+
+      it('should parse the BIGCHARTYPE(30) -collation(CI_AI_KS_WS) token correctly', function(done) {
+        data = Buffer.alloc(63);
+        tempBuff.copy(data);
+
+        typeid = 0xAF;
+        dataLength = 30;
+
+        const valueAsBuffer = Buffer.from([0x82, 0xCD, 0x82, 0xB6, 0x82, 0xDF, 0x82, 0xDC, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20]);
+
+        value = 'はじめま                      ';
+        const codePage = Buffer.from([0x11, 0x04, 0x34, 0x30, 0x00]); //Japanese_Bushu_Kakusu_140_CI_AI_KS_WS_VSS
+        collation = {
+          LCID: 263185,
+          codepage: 'CP932'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, {collation: collation});
+        reader.end(data);
+      });
+
+      it('should parse the BIGCHARTYPE(30)-binary collation token correctly', function(done) {
+        data = Buffer.alloc(63);
+        tempBuff.copy(data);
+
+        typeid = 0xAF;
+        dataLength = 30;
+
+        const valueAsBuffer = Buffer.from([0x61, 0x62, 0x63, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20]);
+        value = 'abc                           ';
+        const codePage = Buffer.from([0x09, 0x04, 0x00, 0x01, 0x1E]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP437'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        //TODO: add check for flags and LCID
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {

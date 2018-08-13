@@ -138,6 +138,16 @@ const type = {
     hasScale: true,
     LengthOfDataLength: 1,
     dataLengthFromScale: true
+  },
+
+  //USHORTLEN_TYPE
+  [0xAF]: {
+    id: 0xAF,
+    type: 'BIGCHAR',
+    name: 'Char',
+    hasCollation: true,
+    LengthOfDataLength: 2,
+    maximumLength: 8000
   }
 };
 

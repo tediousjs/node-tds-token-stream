@@ -1,9 +1,10 @@
 /* @flow */
 
-type readStep = (reader: Reader) => ?readStep;
+type readStep = (reader: Reader) =>?readStep;
 
 const Reader = require('./reader');
 const TYPE = require('./dataTypes').TYPE;
+const { codepageByLcid, codepageBySortId } = require('./collation');
 
 class Collation {
   localeId: number
@@ -36,26 +37,33 @@ class Collation {
     this.codepage = 'CP1252';
   }
 
-  static fromBuffer(buffer: Buffer) : Collation {
+  static fromBuffer(buffer: Buffer): Collation {
     const collation = new Collation();
 
     collation.localeId |= (buffer[2] & 0x0F) << 16;
     collation.localeId |= buffer[1] << 8;
     collation.localeId |= buffer[0];
 
-    // This may not be extracting the correct nibbles in the correct order.
-    //    collation.flags = buffer[3] >> 4;
-    //    collation.flags |= buffer[2] & 0xF0;
+    let collationflag = (buffer[2] & 0xF0) >> 4;
+    collation.ignoreWidth = (collationflag & 8) ? true : false;
+    collation.ignoreKana = (collationflag & 4) ? true : false;
+    collation.ignoreAccent = (collationflag & 2) ? true : false;
+    collation.ignoreCase = (collationflag & 1) ? true : false;
 
-    // This may not be extracting the correct nibble.
-    collation.version = buffer[3] & 0x0F;
+    collationflag = buffer[3] & 0x0F;
+    collation.binary2 = (collationflag & 2) ? true : false;
+    collation.binary = (collationflag & 1) ? true : false;
+
+    collation.version = (buffer[3] & 0xF0) >> 4;
 
     collation.sortId = buffer[4];
 
-    const codepage = undefined; //codepageBySortId[collation.sortId] || codepageByLcid[collation.lcid];
-    if (codepage) {
-      collation.codepage = codepage;
+    //TODO: Handle raw collation
+    let codepage = codepageBySortId[collation.sortId];
+    if (!codepage) {
+      codepage = codepageByLcid[collation.localeId];
     }
+    collation.codepage = codepage;
 
     return collation;
   }
@@ -282,7 +290,8 @@ function readCollation(reader: Reader) {
   const token: TypeInfo = reader.stash[reader.stash.length - 1];
   const type = TYPE[token.id];
   if (type.hasCollation) {
-    console.log('readCollation not implemented');
+    token.collation = Collation.fromBuffer(reader.readBuffer(0, 5));
+    reader.consumeBytes(5);
   }
   return readSchema;
 }
@@ -306,7 +315,7 @@ function readUDTInfo(reader: Reader) {
   reader.stash.push(token);
   return next;
 }
-
+/*
 function readGuidType(reader: Reader) {
   if (!reader.bytesAvailable(1)) {
     return;
@@ -479,9 +488,10 @@ function readXmlTypeSchemaCollection(reader: Reader) {
   reader.stash.push(typeInfo);
   return next;
 }
-
+ */
 module.exports.readTypeInfo = readTypeInfo;
 module.exports.TypeInfo = TypeInfo;
+module.exports.Collation = Collation;
 
 /*
 
