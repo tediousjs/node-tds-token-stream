@@ -49,7 +49,6 @@ const Reader = module.exports = class Reader extends Transform {
     this.version = version;
     this.position = 0;
     this.options = options;
-
     this.stash = [];
 
     this.next = this.nextToken = nextToken;
@@ -64,13 +63,46 @@ const Reader = module.exports = class Reader extends Transform {
   }
 
   readString(encoding: 'ucs2' | 'ascii' | 'utf8', start: number, end: number) {
+    if (this.shouldWait(end - start)) {
+      return;
+    }
     return this.buffer.toString(encoding, this.position + start, this.position + end);
   }
 
-  readBuffer(start: number, end: number) {
-    return this.buffer.slice(this.position + start, this.position + end);
+  /**
+   * @param {Function} next: parser function to which read data should be passed
+   * @param {Function} cReader: readXXX function to call
+   * @param {Function} rest: parameters to be passed to ReadXXX
+   */
+  readData(next: readStep, cReader: Function, ...rest: Array<number>) {
+    this.stash.push(next, rest, cReader);
+    return this.invokeReadXXXMethod;
   }
 
+  invokeReadXXXMethod(reader: Reader) {
+    const func = reader.stash[reader.stash.length - 1 ];
+    const param = reader.stash[reader.stash.length - 2 ];
+    return func.apply(reader, param);
+  }
+
+  readBuffer(start: number, end: number) {
+    if (this.shouldWait(end - start)) {
+      return;
+    }
+    const data = this.buffer.slice(this.position + start, this.position + end);
+    return this.doneReadXXX(data);
+  }
+
+  doneReadXXX(data: ?any) {
+    const toCall = this.stash[this.stash.length - 3];
+    this.stash.splice(this.stash.length - 3);
+    this.stash.push(data);
+    return toCall;
+  }
+
+  shouldWait(length: number) {
+    return !((this.position + length) <= this.buffer.length);
+  }
   readUInt8(offset: number) : number {
     return this.buffer.readUInt8(this.position + offset);
   }
@@ -151,7 +183,7 @@ const Reader = module.exports = class Reader extends Transform {
       return callback(new Error('Expected Buffer'));
     }
 
-    this.buffer = Buffer.concat([ this.buffer, chunk ]);
+    this.buffer = Buffer.concat([ this.buffer.slice(this.position), chunk ]);
     this.position = 0;
 
     try {

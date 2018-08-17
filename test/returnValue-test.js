@@ -142,7 +142,6 @@ describe('Parsing a RETURNVALUE token', function() {
           assert.strictEqual(token.status, status);
           assert.strictEqual(token.userType, userType);
           assert.strictEqual(token.typeInfo.id, typeid);
-
           if ((value !== null) && (typeid == 0x28 || typeid == 0x6F)) {
             assert.equalDate(token.value, value);
             if (options && options.nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, options.nanoSec); }
@@ -152,8 +151,7 @@ describe('Parsing a RETURNVALUE token', function() {
             assert.equalDate(token.value, value);
             assert.equalTime(token.value, value);
             if (options && options.nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, options.nanoSec); }
-          }
-          else {
+          } else {
             assert.strictEqual(token.value, value);
           }
 
@@ -962,6 +960,44 @@ describe('Parsing a RETURNVALUE token', function() {
         //TODO: add check for flags and LCID
         addListners(done, token, collation);
         reader.end(data);
+      });
+
+      it('should parse the BIGCHARTYPE(5000)- collation token correctly', function(done) {
+        data = Buffer.alloc(4049);
+        tempBuff.copy(data);
+        typeid = 0xAF;
+        dataLength = 5000;
+
+        let tempB = Buffer.alloc(4016, 0x20);
+        let valueAsBuffer = Buffer.from([0x73, 0x73]);
+        valueAsBuffer.copy(tempB, 0, 0, 2);
+        valueAsBuffer = tempB;
+
+        value = 'ss' + ' '.repeat(4998);
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); // Latin1_General
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        //TODO: add check for flags and LCID
+        addListners(done, token);
+        tempB = Buffer.alloc(984, 0x20);
+        reader.write(data);
+        reader.write(tempB);
+        reader.end();
       });
 
     });

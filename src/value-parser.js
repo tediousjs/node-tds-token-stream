@@ -11,6 +11,7 @@ const MAX = (1 << 16) - 1;
 const THREE_AND_A_THIRD = 3 + (1 / 3);
 const MONEY_DIVISOR = 10000;
 const NULL = (1 << 16) - 1;
+const PLP_NULL = new Buffer([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
 const DEFAULT_ENCODING = 'utf8';
 
 function valueParse(next: readStep, reader: Reader) {
@@ -120,9 +121,8 @@ function readValue(reader: Reader) {
           token.value = null;
           return reader.stash.pop();
         case 0x10:
-          token.value = guidParser.arrayToGuid(reader.readBuffer(0, dataLength));
-          reader.consumeBytes(dataLength);
-          return reader.stash.pop();
+          reader.stash.push(dataLength);
+          return readGUID;
         default:
           throw new Error('Unknown UniqueIdentifier length');
       }
@@ -273,12 +273,11 @@ function readValue(reader: Reader) {
       }
 
     case 'Char':
-      const collation: Collation = token.typeInfo.collation;
-      const codepage = collation.codepage;
       if (token.dataLength === MAX) {
         // TODO: PLP support
       } else {
-        return readChars(dataLength, codepage, NULL, reader);
+        reader.stash.push(dataLength);
+        return readChars;
       }
 
     default:
@@ -412,19 +411,61 @@ function readMoney(reader: Reader) {
   return reader.stash.pop();
 }
 
-function readChars(dataLength: number, codepage: string, nullValue: ?any, reader: Reader) {
+function readGUID(reader: Reader) {
+  const dataLength = reader.stash[reader.stash.length - 1];
+  return reader.readData(parserGUID, reader.readBuffer, 0, dataLength);
+}
+
+function parserGUID(reader: Reader) {
+  const data = reader.stash.pop();
+  const dataLength = reader.stash.pop();
   const token = reader.stash[reader.stash.length - 2];
+
+  token.value = guidParser.arrayToGuid(data);
+  reader.consumeBytes(dataLength);
+  return reader.stash.pop();
+}
+
+function readChars(reader: Reader) {
+  const dataLength = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 3];
+
+  let nullValue;
+  switch (TYPE[token.typeInfo.id].name) {
+    case 'VarChar':
+    case 'Char':
+      nullValue = NULL;
+      break;
+    case 'Text':
+      nullValue = PLP_NULL;
+      break;
+    default:
+      console.log('Invalid type');
+  }
+
+  if (dataLength === nullValue) {
+    token.value = null;
+    return reader.stash.pop();
+  }
+  else {
+    return reader.readData(parseChar, reader.readBuffer, 0, dataLength);
+  }
+}
+
+function parseChar(reader: Reader) {
+  const data = reader.stash.pop();
+  const dataLength = reader.stash.pop();
+  const token = reader.stash[reader.stash.length - 2];
+  const collation: Collation = token.typeInfo.collation;
+  let codepage = collation.codepage;
+
   if (codepage == null) {
     codepage = DEFAULT_ENCODING;
   }
-  if (dataLength === nullValue) {
-    token.value = null;
-  }
-  else {
-    const data = reader.readBuffer(0, dataLength);
-    token.value = iconv.decode(data, codepage);
-    reader.consumeBytes(dataLength);
-  }
+
+  token.value = iconv.decode(data, codepage);
+  reader.consumeBytes(dataLength);
   return reader.stash.pop();
 }
+
 module.exports.valueParse = valueParse;

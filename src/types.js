@@ -97,7 +97,6 @@ class TypeInfo {
 
 function readTypeInfo(next: readStep, reader: Reader) {
   reader.stash.push(next);
-
   return readTypeId;
 }
 
@@ -290,9 +289,17 @@ function readCollation(reader: Reader) {
   const token: TypeInfo = reader.stash[reader.stash.length - 1];
   const type = TYPE[token.id];
   if (type.hasCollation) {
-    token.collation = Collation.fromBuffer(reader.readBuffer(0, 5));
-    reader.consumeBytes(5);
+    return reader.readData(parseCollation, reader.readBuffer, 0, 5);
   }
+  else
+    return readSchema;
+}
+
+function parseCollation(reader: Reader) {
+  const data = reader.stash.pop();
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
+  token.collation = Collation.fromBuffer(data);
+  reader.consumeBytes(5);
   return readSchema;
 }
 
