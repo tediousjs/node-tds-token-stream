@@ -29,4 +29,3 @@ class ErrorToken extends Token {
 module.exports = ErrorToken;
 
 ErrorToken.read = require('./read');
-ErrorToken.write = require('./write');

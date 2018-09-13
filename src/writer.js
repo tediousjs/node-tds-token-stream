@@ -25,10 +25,6 @@ class Writer extends Transform {
         case 0xFD:
           writeDoneToken(this, token);
           break;
-
-        case 0xAA:
-          writeErrorToken(this, token);
-          break;
       }
     } catch (e) {
       return callback(e);
@@ -41,4 +37,3 @@ class Writer extends Transform {
 module.exports = Writer;
 
 const writeDoneToken = require('./tokens/done/write');
-const writeErrorToken = require('./tokens/error/write');
