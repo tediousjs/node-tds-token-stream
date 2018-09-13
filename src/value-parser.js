@@ -26,9 +26,8 @@ function readDataLength(reader: Reader) {
   switch (token.typeInfo.id & 0x30) {
     case 0x10: // xx01xxxx - s2.2.4.2.1.1
       // token.value = 0;
-      // reader.stash.push(0);
       reader.stash.push(0);
-      //TODO: test this
+      //TODO: add test for this case
       return readValue;
 
     case 0x20: // xx10xxxx - s2.2.4.2.1.3
@@ -36,14 +35,24 @@ function readDataLength(reader: Reader) {
       if (token.typeInfo.dataLength !== MAX) {
         switch (TYPE[token.typeInfo.id].LengthOfDataLength) {
           case 1: // BYTELEN
+            // for RETURNVALUE_TOKEN all the flags should be zero (TDS 2.2.7.18)
+            if (!reader.bytesAvailable(1)) {
+              return;
+            }
             reader.stash.push(reader.readUInt8(0));
             reader.consumeBytes(1);
             return readValue;
           case 2: // USHORTCHARBINLEN
+            if (!reader.bytesAvailable(2)) {
+              return;
+            }
             reader.stash.push(reader.readUInt16LE(0));
             reader.consumeBytes(2);
             return readValue;
           case 4: // LONGLEN
+            if (!reader.bytesAvailable(4)) {
+              return;
+            }
             reader.stash.push(reader.readUInt32LE(0));
             reader.consumeBytes(4);
             return readValue;
@@ -65,53 +74,100 @@ function readDataLength(reader: Reader) {
 }
 
 function readValue(reader: Reader) {
-  const dataLength = reader.stash.pop();
-  const token = reader.stash[reader.stash.length - 2];
+  const dataLength = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 3];
 
   switch (TYPE[token.typeInfo.id].name) {
 
     // Fixed-Length Data Types
     case 'Null':
       token.value = null;
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'TinyInt':
+      if (!reader.bytesAvailable(1)) {
+        return;
+      }
       token.value = reader.readUInt8(0);
       reader.consumeBytes(1);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'Bit':
+      if (!reader.bytesAvailable(1)) {
+        return;
+      }
       token.value = !!reader.readUInt8(0);
       reader.consumeBytes(1);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'SmallInt':
+      if (!reader.bytesAvailable(2)) {
+        return;
+      }
       token.value = reader.readInt16LE(0);
       reader.consumeBytes(2);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'Int':
+      if (!reader.bytesAvailable(4)) {
+        return;
+      }
       token.value = reader.readInt32LE(0);
       reader.consumeBytes(4);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'BigInt':
+      if (!reader.bytesAvailable(8)) {
+        return;
+      }
       //TODO: replace with better alternative to avoid overflow and to read -ve value
       token.value = reader.readUInt64LE(0);
       reader.consumeBytes(8);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'SmallDateTime':
       return readSmallDateTime;
+
     case 'Real':
+      if (!reader.bytesAvailable(4)) {
+        return;
+      }
       token.value = reader.readFloatLE(0);
       reader.consumeBytes(4);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'Money':
+      if (!reader.bytesAvailable(8)) {
+        return;
+      }
       return readMoney;
+
     case 'DateTime':
       return readDateTime;
+
     case 'Float':
+      if (!reader.bytesAvailable(8)) {
+        return;
+      }
       token.value = reader.readDoubleLE(0);
       reader.consumeBytes(8);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
+
     case 'SmallMoney':
+      if (!reader.bytesAvailable(4)) {
+        return;
+      }
       token.value = reader.readInt32LE(0) / MONEY_DIVISOR;
       reader.consumeBytes(4);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
 
     // Variable-Length Data Types
@@ -119,9 +175,9 @@ function readValue(reader: Reader) {
       switch (dataLength) {
         case 0:
           token.value = null;
+          reader.stash.pop(); // remove dataLength
           return reader.stash.pop();
         case 0x10:
-          reader.stash.push(dataLength);
           return readGUID;
         default:
           throw new Error('Unknown UniqueIdentifier length');
@@ -130,46 +186,70 @@ function readValue(reader: Reader) {
       switch (dataLength) {
         case 0:
           token.value = null;
-          return reader.stash.pop();
+          break;
         case 1: // TinyInt
+          if (!reader.bytesAvailable(1)) {
+            return;
+          }
           token.value = reader.readUInt8(0);
           reader.consumeBytes(1);
-          return reader.stash.pop();
+          break;
         case 2: // SmallInt
+          if (!reader.bytesAvailable(2)) {
+            return;
+          }
           token.value = reader.readInt16LE(0);
           reader.consumeBytes(2);
-          return reader.stash.pop();
+          break;
         case 4: // Int
+          if (!reader.bytesAvailable(4)) {
+            return;
+          }
           token.value = reader.readInt32LE(0);
           reader.consumeBytes(4);
-          return reader.stash.pop();
+          break;
         case 8: // BigInt
+          if (!reader.bytesAvailable(8)) {
+            return;
+          }
           // TODO: replace with better alternative to avoid overflow and to read -ve value
           token.value = reader.readUInt64LE(0);
           reader.consumeBytes(8);
-          return reader.stash.pop();
+          break;
         default:
           throw new Error('Unknown length for integer datatype');
       }
+      reader.stash.pop(); // remove dataLength
+      return reader.stash.pop();
     case 'BitN':
       switch (dataLength) {
         case 0:
           token.value = null;
-          return reader.stash.pop();
+          break;
         case 1:
+          if (!reader.bytesAvailable(1)) {
+            return;
+          }
           token.value = !!reader.readUInt8(0);
           reader.consumeBytes(1);
-          return reader.stash.pop();
+          break;
       }
+      reader.stash.pop(); // remove dataLength
+      return reader.stash.pop();
     case 'NumericN':
       if (dataLength === 0) {
         token.value = null;
+        reader.stash.pop(); // remove dataLength
         return reader.stash.pop();
+      }
+      if (!reader.bytesAvailable(dataLength)) {
+        return;
       }
       let sign = reader.readUInt8(0);
       reader.consumeBytes(1);
       sign = sign === 1 ? 1 : -1;
       let value;
+
       switch (dataLength - 1) {
         case 4:
           value = reader.readUInt32LE(0);
@@ -191,13 +271,17 @@ function readValue(reader: Reader) {
           throw new Error(`Unsupported numeric size ${dataLength - 1}`);
       }
       token.value = (value * sign) / Math.pow(10, token.typeInfo.scale);
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
 
     case 'FloatN':
+      if (!reader.bytesAvailable(dataLength)) {
+        return;
+      }
       switch (dataLength) {
         case 0:
           token.value = null;
-          return reader.stash.pop();
+          break;
         case 4:
           token.value = reader.readFloatLE(0);
           reader.consumeBytes(4);
@@ -209,16 +293,22 @@ function readValue(reader: Reader) {
         default:
           throw new Error('Unsupported dataLength ' + dataLength + ' for FloatN');
       }
+      reader.stash.pop(); // remove dataLength
       return reader.stash.pop();
 
     case 'MoneyN':
+      if (!reader.bytesAvailable(dataLength)) {
+        return;
+      }
       switch (dataLength) {
         case 0:
           token.value = null;
+          reader.stash.pop(); // remove dataLength
           return reader.stash.pop();
         case 4:
           token.value = reader.readInt32LE(0) / MONEY_DIVISOR;
           reader.consumeBytes(4);
+          reader.stash.pop(); // remove dataLength
           return reader.stash.pop();
         case 8:
           return readMoney;
@@ -230,6 +320,7 @@ function readValue(reader: Reader) {
       switch (dataLength) {
         case 0:
           token.value = null;
+          reader.stash.pop(); // remove dataLength
           return reader.stash.pop();
         case 3:
           return readDateN;
@@ -240,15 +331,17 @@ function readValue(reader: Reader) {
     case 'Time':
       if (dataLength === 0) {
         token.value = null;
+        reader.stash.pop(); // remove dataLength
         return reader.stash.pop();
       } else {
-        return readTimeN(dataLength, reader);
+        return readTimeN(reader);
       }
 
     case 'DateTimeN':
       switch (dataLength) {
         case 0:
           token.value = null;
+          reader.stash.pop(); // remove dataLength
           return reader.stash.pop();
         case 4:
           return readSmallDateTime;
@@ -259,24 +352,25 @@ function readValue(reader: Reader) {
     case 'DateTime2':
       if (dataLength === 0) {
         token.value = null;
+        reader.stash.pop(); // remove dataLength
         return reader.stash.pop();
       } else {
-        return readDateTime2N(dataLength, reader);
+        return readDateTime2N(reader);
       }
 
     case 'DateTimeOffset':
       if (dataLength === 0) {
         token.value = null;
+        reader.stash.pop(); // remove dataLength
         return reader.stash.pop();
       } else {
-        return readDateTimeOffset(dataLength, reader);
+        return readDateTimeOffset(reader);
       }
 
     case 'Char':
       if (token.dataLength === MAX) {
         // TODO: PLP support
       } else {
-        reader.stash.push(dataLength);
         return readChars;
       }
 
@@ -286,6 +380,10 @@ function readValue(reader: Reader) {
 }
 
 function readSmallDateTime(reader: Reader) {
+  if (!reader.bytesAvailable(4)) {
+    return;
+  }
+  reader.stash.pop(); // datalength
   const token = reader.stash[reader.stash.length - 2];
   const days = reader.readUInt16LE(0);
   const minutes = reader.readUInt16LE(2);
@@ -299,6 +397,10 @@ function readSmallDateTime(reader: Reader) {
 }
 
 function readDateTime(reader: Reader) {
+  if (!reader.bytesAvailable(8)) {
+    return;
+  }
+  reader.stash.pop(); // remove dataLength
   const token = reader.stash[reader.stash.length - 2];
   const days = reader.readUInt32LE(0);
   const threeHundredthsOfSecond = reader.readUInt32LE(4);
@@ -312,9 +414,15 @@ function readDateTime(reader: Reader) {
   return reader.stash.pop();
 }
 
-function readTimeN(dataLength: number, reader: Reader) {
-  const token = reader.stash[reader.stash.length - 2];
+function readTimeN(reader: Reader) {
+  const token = reader.stash[reader.stash.length - 3];
+  const dataLength = reader.stash[reader.stash.length - 1];
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
   token.value = readTime(dataLength, token.typeInfo.scale, reader);
+  reader.consumeBytes(dataLength);
+  reader.stash.pop(); // remove dataLength
   return reader.stash.pop();
 }
 
@@ -323,15 +431,12 @@ function readTime(dataLength: number, scale: number, reader: Reader) {
   switch (dataLength) {
     case 3:
       value = reader.readUInt24LE(0);
-      reader.consumeBytes(3);
       break;
     case 4:
       value = reader.readUInt32LE(0);
-      reader.consumeBytes(4);
       break;
     case 5:
       value = reader.readUInt40LE(0);
-      reader.consumeBytes(5);
       break;
     default:
       throw new Error(`Unknown length ${dataLength} for temporal datatype`);
@@ -358,8 +463,13 @@ function readTime(dataLength: number, scale: number, reader: Reader) {
 }
 
 function readDateN(reader: Reader) {
-  const token = reader.stash[reader.stash.length - 2];
+  if (!reader.bytesAvailable(3)) {
+    return;
+  }
+  const token = reader.stash[reader.stash.length - 3];
   token.value = readDate(undefined, reader.options.useUTC, reader);
+  reader.consumeBytes(3);
+  reader.stash.pop(); // remove dataLength
   return reader.stash.pop();
 }
 
@@ -371,17 +481,27 @@ function readDate(time: ?Date, useUTC: boolean, reader: Reader) {
   } else {
     value = new Date(2000, 0, days - 730118, time ? (time.getHours(), time.getMinutes(), time.getSeconds(), time.getMilliseconds()) : 0);
   }
-  reader.consumeBytes(3);
   return value;
 }
 
-function readDateTime2N(dataLength: number, reader: Reader) {
+function readDateTime2N(reader: Reader) {
+  const dataLength = reader.stash[reader.stash.length - 1];
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
+  reader.stash.pop(); // remove dataLength
   const token = reader.stash[reader.stash.length - 2];
   token.value = readDateTime2(dataLength - 3, token.typeInfo.scale, reader.options.useUTC, reader);
   return reader.stash.pop();
 }
 
-function readDateTimeOffset(dataLength: number, reader: Reader) {
+function readDateTimeOffset(reader: Reader) {
+  const dataLength = reader.stash[reader.stash.length - 1];
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
+  reader.stash.pop(); // remove dataLength
+
   const token = reader.stash[reader.stash.length - 2];
   const date = readDateTime2(dataLength - 5, token.typeInfo.scale, true, reader);
   reader.readInt16LE(0); // TODO: add implementation to handle offset
@@ -392,7 +512,9 @@ function readDateTimeOffset(dataLength: number, reader: Reader) {
 
 function readDateTime2(dataLength: number, scale: number, useUTC: boolean, reader: Reader) {
   const time = readTime(dataLength, scale, reader);
+  reader.consumeBytes(dataLength);
   const date = readDate(time, useUTC, reader);
+  reader.consumeBytes(3);
   // $FlowFixMe
   Object.defineProperty(date, 'nanosecondsDelta', {
     enumerable: false,
@@ -403,6 +525,7 @@ function readDateTime2(dataLength: number, scale: number, useUTC: boolean, reade
 }
 
 function readMoney(reader: Reader) {
+  reader.stash.pop(); // remove dataLength
   const token = reader.stash[reader.stash.length - 2];
   const high = reader.readInt32LE(0);
   const low = reader.readUInt32LE(4);
@@ -412,15 +535,15 @@ function readMoney(reader: Reader) {
 }
 
 function readGUID(reader: Reader) {
+
   const dataLength = reader.stash[reader.stash.length - 1];
-  return reader.readData(parserGUID, reader.readBuffer, 0, dataLength);
-}
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
+  reader.stash.pop(); // remove dataLength
+  const data = reader.readBuffer(0, dataLength);
 
-function parserGUID(reader: Reader) {
-  const data = reader.stash.pop();
-  const dataLength = reader.stash.pop();
   const token = reader.stash[reader.stash.length - 2];
-
   token.value = guidParser.arrayToGuid(data);
   reader.consumeBytes(dataLength);
   return reader.stash.pop();
@@ -428,6 +551,9 @@ function parserGUID(reader: Reader) {
 
 function readChars(reader: Reader) {
   const dataLength = reader.stash[reader.stash.length - 1];
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
   const token = reader.stash[reader.stash.length - 3];
 
   let nullValue;
@@ -445,27 +571,23 @@ function readChars(reader: Reader) {
 
   if (dataLength === nullValue) {
     token.value = null;
+    reader.stash.pop(); // remove dataLength
     return reader.stash.pop();
   }
   else {
-    return reader.readData(parseChar, reader.readBuffer, 0, dataLength);
+    const data = reader.readBuffer(0, dataLength);
+    const collation: Collation = token.typeInfo.collation;
+    let codepage = collation.codepage;
+
+    if (codepage == null) {
+      codepage = DEFAULT_ENCODING;
+    }
+
+    token.value = iconv.decode(data, codepage);
+    reader.consumeBytes(dataLength);
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
   }
-}
-
-function parseChar(reader: Reader) {
-  const data = reader.stash.pop();
-  const dataLength = reader.stash.pop();
-  const token = reader.stash[reader.stash.length - 2];
-  const collation: Collation = token.typeInfo.collation;
-  let codepage = collation.codepage;
-
-  if (codepage == null) {
-    codepage = DEFAULT_ENCODING;
-  }
-
-  token.value = iconv.decode(data, codepage);
-  reader.consumeBytes(dataLength);
-  return reader.stash.pop();
 }
 
 module.exports.valueParse = valueParse;

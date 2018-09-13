@@ -194,13 +194,13 @@ function readTypeId(reader: Reader) {
 }
 
 function readDataLength(reader: Reader) {
-  const token: TypeInfo = reader.stash.pop();
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
   const type = TYPE[token.id];
   if ((token.id & 0x30) === 0x20) { // VARLEN_TYPE
     if (type.dataLengthFromScale) {
-      reader.stash.push(token);
       return readScale;
     } else if (type.fixedDataLength) {
+      reader.stash.pop(); // pop the token
       const next = reader.stash.pop();
       reader.stash.push(token);
       return next;
@@ -211,6 +211,9 @@ function readDataLength(reader: Reader) {
           token.dataLength = undefined;
           break;
         case 1:
+          if (!reader.bytesAvailable(1)) {
+            return;
+          }
           token.dataLength = reader.readUInt8(0);
           reader.consumeBytes(1);
           switch (token.dataLength) {
@@ -243,20 +246,26 @@ function readDataLength(reader: Reader) {
           }
           break;
         case 2:
+          if (!reader.bytesAvailable(2)) {
+            return;
+          }
           token.dataLength = reader.readUInt16LE(0);
           reader.consumeBytes(2);
           break;
         case 4:
+          if (!reader.bytesAvailable(4)) {
+            return;
+          }
           token.dataLength = reader.readUInt32LE(0);
           reader.consumeBytes(4);
           break;
         default:
           throw new Error('Unsupported dataLengthLength ' + type.LengthOfDataLength + ' for data type ' + type.name);
       }
-      reader.stash.push(token);
       return readPrecision;
     }
   } else {
+    reader.stash.pop(); // remove the token
     // token.dataLength is not needed for FIXEDLENTYPE type
     const next = reader.stash.pop();
     reader.stash.push(token);
@@ -269,6 +278,9 @@ function readPrecision(reader: Reader) {
   const token: TypeInfo = reader.stash[reader.stash.length - 1];
   const type = TYPE[token.id];
   if (type.hasPrecision) {
+    if (!reader.bytesAvailable(1)) {
+      return;
+    }
     token.precision = reader.readUInt8(0);
     reader.consumeBytes(1);
   }
@@ -279,6 +291,9 @@ function readScale(reader: Reader) {
   const token: TypeInfo = reader.stash[reader.stash.length - 1];
   const type = TYPE[token.id];
   if (type.hasScale) {
+    if (!reader.bytesAvailable(1)) {
+      return;
+    }
     token.scale = reader.readUInt8(0);
     reader.consumeBytes(1);
   }
@@ -289,17 +304,13 @@ function readCollation(reader: Reader) {
   const token: TypeInfo = reader.stash[reader.stash.length - 1];
   const type = TYPE[token.id];
   if (type.hasCollation) {
-    return reader.readData(parseCollation, reader.readBuffer, 0, 5);
+    if (!reader.bytesAvailable(5)) {
+      return;
+    }
+    const data = reader.readBuffer(0, 5);
+    token.collation = Collation.fromBuffer(data);
+    reader.consumeBytes(5);
   }
-  else
-    return readSchema;
-}
-
-function parseCollation(reader: Reader) {
-  const data = reader.stash.pop();
-  const token: TypeInfo = reader.stash[reader.stash.length - 1];
-  token.collation = Collation.fromBuffer(data);
-  reader.consumeBytes(5);
   return readSchema;
 }
 

@@ -4,13 +4,29 @@ import type Reader from '../../reader';
 import type { TypeInfo } from '../../types';
 
 function readReturnValueToken(reader: Reader) {
-  const token = new ReturnValueToken();
+  if (!reader.bytesAvailable(2)) {
+    return;
+  }
 
-  let offset = 0;
-  token.paramOrdinal = reader.readUInt16LE(offset);
-  offset += 2;
-  const paramLength = reader.readUInt8(offset) * 2;
-  offset += 1;
+  const token = new ReturnValueToken();
+  token.paramOrdinal = reader.readUInt16LE(0);
+  reader.consumeBytes(2);
+  reader.stash.push(token);
+  return readReturnValueParamName;
+}
+
+function readReturnValueParamName(reader: Reader) {
+  if (!reader.bytesAvailable(1)) {
+    return;
+  }
+
+  const paramLength = reader.readUInt8(0) * 2;
+  if (!reader.bytesAvailable(1 /*paramLength*/ + paramLength + 1 /*status*/)) {
+    return;
+  }
+  let offset = 1;
+
+  const token: ReturnValueToken = reader.stash[reader.stash.length - 1];
   token.paramName = reader.readString('ucs2', offset, offset + paramLength);
   offset += paramLength;
 
@@ -20,6 +36,7 @@ function readReturnValueToken(reader: Reader) {
 
   reader.stash.push(token);
   return parseUserType;
+
 }
 
 function parseUserType(reader: Reader) {

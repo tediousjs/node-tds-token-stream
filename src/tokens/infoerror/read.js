@@ -8,11 +8,10 @@ function readInfoErrorToken(reader: Reader) {
   }
 
   const length = reader.readUInt16LE(0);
-
-  reader.consumeBytes(2);
-  if (!reader.bytesAvailable(length)) {
+  if (!reader.bytesAvailable(2 + length)) {
     return;
   }
+  reader.consumeBytes(2);
 
   let offset = 0;
   const token = new InfoErrorToken();

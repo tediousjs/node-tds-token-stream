@@ -22,6 +22,9 @@ function parseColumnOrder(reader: Reader) {
     return reader.nextToken;
   }
 
+  if (!reader.bytesAvailable(2)) {
+    return;
+  }
   const colNumber = reader.readUInt16LE(0);
   reader.consumeBytes(2);
   token.orderColumns.push(colNumber);
