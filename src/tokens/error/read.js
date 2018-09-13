@@ -12,30 +12,26 @@ function readErrorToken(reader: Reader) {
   if (!reader.bytesAvailable(length)) {
     return;
   }
-
-  const tokenData = reader.readBuffer(2, length);
-  reader.consumeBytes(length);
+  reader.consumeBytes(2);
 
   const token = new ErrorToken();
-  token.number = tokenData.readUInt32LE(0);
-  token.state = tokenData.readUInt8(4);
-  token.class = tokenData.readUInt8(5);
-
+  token.number = reader.readUInt32LE(0);
+  token.state = reader.readUInt8(4);
+  token.class = reader.readUInt8(5);
   let offset = 6;
-  const messageByteLength = tokenData.readUInt16LE(offset) * 2;
-  token.message = tokenData.toString('ucs2', offset += 2, offset += messageByteLength);
-
-  const serverNameByteLength = tokenData.readUInt8(offset) * 2;
-  token.serverName = tokenData.toString('ucs2', offset += 1, offset += serverNameByteLength);
-
-  const procNameByteLength = tokenData.readUInt8(offset) * 2;
-  token.procName = tokenData.toString('ucs2', offset += 1, offset += procNameByteLength);
+  const messageByteLength = reader.readUInt16LE(offset) * 2;
+  token.message = reader.readBuffer(offset += 2, offset += messageByteLength).toString('ucs2');
+  const serverNameByteLength = reader.readUInt8(offset) * 2;
+  token.serverName = reader.readBuffer(offset += 1, offset += serverNameByteLength).toString('ucs2');
+  const procNameByteLength = reader.readUInt8(offset) * 2;
+  token.procName = reader.readBuffer(offset += 1, offset += procNameByteLength).toString('ucs2');
 
   if (reader.version >= 0x72090002) {
-    token.lineNumber = tokenData.readUInt32LE(offset);
+    token.lineNumber = reader.readUInt32LE(offset);
   } else {
-    token.lineNumber = tokenData.readUInt16LE(offset);
+    token.lineNumber = reader.readUInt16LE(offset);
   }
+  reader.consumeBytes(length);
 
   reader.push(token);
 

@@ -23,7 +23,7 @@ function writeDoneInProcToken(stream: Writer, token: Token) {
 function statusFromToken(token) {
   let status = 0;
   if (token.more) status |= 0x1;
-  if (token.error) status |= 0x2;
+  if (token.sqlError) status |= 0x2;
   if (token.isCountValid) status |= 0x10;
   if (token.serverError) status |= 0x100;
   return status;

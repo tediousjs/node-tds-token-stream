@@ -1,6 +1,7 @@
 [ignore]
 <PROJECT_ROOT>/lib/.*
 <PROJECT_ROOT>/node_modules/.*
+<PROJECT_ROOT>/test/.*
 
 [libs]
 flow-typed/

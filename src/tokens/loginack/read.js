@@ -8,10 +8,10 @@ function readLoginAckToken(reader: Reader) {
   }
 
   const length = reader.readUInt16LE(0);
-  reader.consumeBytes(2);
-  if (!reader.bytesAvailable(length)) {
+  if (!reader.bytesAvailable(2 + length)) {
     return;
   }
+  reader.consumeBytes(2);
 
   const token = new LoginAckToken();
   let offset = 0;

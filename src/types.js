@@ -1,24 +1,10 @@
 /* @flow */
 
-type readStep = (reader: Reader) => ?readStep;
+type readStep = (reader: Reader) =>?readStep;
 
 const Reader = require('./reader');
-
-type typeInfoId =
-  // FIXEDLENTYPE
-  0x1F | 0x30 | 0x32 | 0x34 | 0x38 | 0x3A | 0x3B | 0x3C | 0x3D | 0x3E | 0x7A | 0x7F |
-  // BYTELEN_TYPE
-  0x24 | 0x26 | 0x37 |
-
-  // USHORTLEN_TYPE
-  0xE7 |
-
-  // LONGLEN_TYPE
-  0xF1 | // XMLTYPE
-  0x22 | // IMAGETYPE
-  0x23 | // TEXTTYPE
-  0x62 | // SSVARIANTTYPE
-  0x63; // NTEXTTYPE
+const TYPE = require('./dataTypes').TYPE;
+const { codepageByLcid, codepageBySortId } = require('./collation');
 
 class Collation {
   localeId: number
@@ -51,33 +37,40 @@ class Collation {
     this.codepage = 'CP1252';
   }
 
-  static fromBuffer(buffer: Buffer) : Collation {
+  static fromBuffer(buffer: Buffer): Collation {
     const collation = new Collation();
 
     collation.localeId |= (buffer[2] & 0x0F) << 16;
     collation.localeId |= buffer[1] << 8;
     collation.localeId |= buffer[0];
 
-    // This may not be extracting the correct nibbles in the correct order.
-    //    collation.flags = buffer[3] >> 4;
-    //    collation.flags |= buffer[2] & 0xF0;
+    let collationflag = (buffer[2] & 0xF0) >> 4;
+    collation.ignoreWidth = (collationflag & 8) ? true : false;
+    collation.ignoreKana = (collationflag & 4) ? true : false;
+    collation.ignoreAccent = (collationflag & 2) ? true : false;
+    collation.ignoreCase = (collationflag & 1) ? true : false;
 
-    // This may not be extracting the correct nibble.
-    collation.version = buffer[3] & 0x0F;
+    collationflag = buffer[3] & 0x0F;
+    collation.binary2 = (collationflag & 2) ? true : false;
+    collation.binary = (collationflag & 1) ? true : false;
+
+    collation.version = (buffer[3] & 0xF0) >> 4;
 
     collation.sortId = buffer[4];
 
-    const codepage = undefined; //codepageBySortId[collation.sortId] || codepageByLcid[collation.lcid];
-    if (codepage) {
-      collation.codepage = codepage;
+    //TODO: Handle raw collation
+    let codepage = codepageBySortId[collation.sortId];
+    if (!codepage) {
+      codepage = codepageByLcid[collation.localeId];
     }
+    collation.codepage = codepage;
 
     return collation;
   }
 }
 
 class TypeInfo {
-  id: typeInfoId
+  id: number
   dataLength: ?number
   precision: ?number
   scale: ?number
@@ -88,11 +81,11 @@ class TypeInfo {
   xmlOwningSchema: ?string
   xmlSchemaCollection: ?string
 
-  constructor(id: typeInfoId, dataLength: ?number, precision: ?number, scale: ?number) {
+  constructor(id: number) {
     this.id = id;
-    this.dataLength = dataLength;
-    this.precision = precision;
-    this.scale = scale;
+    this.dataLength = undefined;
+    this.precision = undefined;
+    this.scale = undefined;
 
     this.collation = undefined;
 
@@ -104,7 +97,6 @@ class TypeInfo {
 
 function readTypeInfo(next: readStep, reader: Reader) {
   reader.stash.push(next);
-
   return readTypeId;
 }
 
@@ -116,6 +108,13 @@ function readTypeId(reader: Reader) {
   const id = reader.readUInt8(0);
   reader.consumeBytes(1);
 
+  if (!TYPE[id]) {
+    throw new Error('Unknown Type! - 0x' + id.toString(16));
+  }
+
+  reader.stash.push(new TypeInfo(id));
+  return readDataLength;
+  /*
   switch (id) {
     // FIXEDLENTYPE
     case 0x1F: // NULLTYPE
@@ -144,21 +143,27 @@ function readTypeId(reader: Reader) {
     case 0x24: // GUIDTYPE
       return readGuidType;
 
-    case 0x26: // INTNTYPE
-      return readIntNType;
 
     case 0x37: // DECIMALTYPE
-      return readDecimalType;
-
     case 0x3F: // NUMERICTYPE
-    case 0x68: // BITNTYPE
     case 0x6A: // DECIMALNTYPE
     case 0x6C: // NUMERICNTYPE
+      return readDecimalNumericType(id, reader);
+
+    case 0x26: // INTNTYPE
+    case 0x68: // BITNTYPE
     case 0x6D: // FLTNTYPE
     case 0x6E: // MONEYNTYPE
-    case 0x6F: // DATETIMNTYPE
+      return readByteLenType(id, reader);
+
     case 0x28: // DATENTYPE
+    // TODO: change the function name to something generic?
+      return readFixedLengthType(id, 0, reader);
+
     case 0x29: // TIMENTYPE
+      // read scale??
+
+    case 0x6F: // DATETIMNTYPE
     case 0x2A: // DATETIME2NTYPE
     case 0x2B: // DATETIMEOFFSETNTYPE
     case 0x2F: // CHARTYPE
@@ -185,16 +190,150 @@ function readTypeId(reader: Reader) {
     default:
       throw new Error('Unknown Type! - 0x' + id.toString(16));
   }
+   */
 }
 
-function readFixedLengthType(id, dataLength: number, reader: Reader) {
+function readDataLength(reader: Reader) {
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
+  const type = TYPE[token.id];
+  if ((token.id & 0x30) === 0x20) { // VARLEN_TYPE
+    if (type.dataLengthFromScale) {
+      return readScale;
+    } else if (type.fixedDataLength) {
+      reader.stash.pop(); // pop the token
+      const next = reader.stash.pop();
+      reader.stash.push(token);
+      return next;
+    }
+    else {
+      switch (type.LengthOfDataLength) {
+        case 0:
+          token.dataLength = undefined;
+          break;
+        case 1:
+          if (!reader.bytesAvailable(1)) {
+            return;
+          }
+          token.dataLength = reader.readUInt8(0);
+          reader.consumeBytes(1);
+          switch (token.dataLength) {
+            case 0x24: // GUIDTYPE
+              if (token.dataLength != 0x00 && token.dataLength != 0x10) {
+                throw new Error('Invalid data length for GUIDTYPE');
+              }
+              break;
+            case 0x26: // INTNTYPE
+              if (token.dataLength != 0x01 && token.dataLength != 0x02 &&
+                token.dataLength != 0x04 && token.dataLength != 0x08) {
+                throw new Error('Invalid data length for INTNTYPE');
+              }
+              break;
+            case 0x68: // BITNTYPE
+              if (token.dataLength != 0x00 && token.dataLength != 0x01) {
+                throw new Error('Invalid data length for BITNTYPE');
+              }
+              break;
+            case 0x6D: // FLTNTYPE
+              if (token.dataLength !== 4 && token.dataLength !== 8) {
+                throw new Error('Invalid data length for FLTNTYPE');
+              }
+              break;
+            case 0x6E: // MONEYNTYPE
+              if (token.dataLength !== 4 && token.dataLength !== 8) {
+                throw new Error('Invalid data length for MONEYNTYPE');
+              }
+              break;
+          }
+          break;
+        case 2:
+          if (!reader.bytesAvailable(2)) {
+            return;
+          }
+          token.dataLength = reader.readUInt16LE(0);
+          reader.consumeBytes(2);
+          break;
+        case 4:
+          if (!reader.bytesAvailable(4)) {
+            return;
+          }
+          token.dataLength = reader.readUInt32LE(0);
+          reader.consumeBytes(4);
+          break;
+        default:
+          throw new Error('Unsupported dataLengthLength ' + type.LengthOfDataLength + ' for data type ' + type.name);
+      }
+      return readPrecision;
+    }
+  } else {
+    reader.stash.pop(); // remove the token
+    // token.dataLength is not needed for FIXEDLENTYPE type
+    const next = reader.stash.pop();
+    reader.stash.push(token);
+    return next;
+  }
+}
+
+
+function readPrecision(reader: Reader) {
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
+  const type = TYPE[token.id];
+  if (type.hasPrecision) {
+    if (!reader.bytesAvailable(1)) {
+      return;
+    }
+    token.precision = reader.readUInt8(0);
+    reader.consumeBytes(1);
+  }
+  return readScale;
+}
+
+function readScale(reader: Reader) {
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
+  const type = TYPE[token.id];
+  if (type.hasScale) {
+    if (!reader.bytesAvailable(1)) {
+      return;
+    }
+    token.scale = reader.readUInt8(0);
+    reader.consumeBytes(1);
+  }
+  return readCollation;
+}
+
+function readCollation(reader: Reader) {
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
+  const type = TYPE[token.id];
+  if (type.hasCollation) {
+    if (!reader.bytesAvailable(5)) {
+      return;
+    }
+    const data = reader.readBuffer(0, 5);
+    token.collation = Collation.fromBuffer(data);
+    reader.consumeBytes(5);
+  }
+  return readSchema;
+}
+
+function readSchema(reader: Reader) {
+  const token: TypeInfo = reader.stash[reader.stash.length - 1];
+  const type = TYPE[token.id];
+  if (type.hasSchema) {
+    console.log('readSchema not implemented');
+  }
+  return readUDTInfo;
+}
+
+function readUDTInfo(reader: Reader) {
+  const token: TypeInfo = reader.stash.pop();
+  const type = TYPE[token.id];
+  if (type.hasUDTInfo) {
+    console.log('readUDTInfo not implemented');
+  }
   const next = reader.stash.pop();
-
-  reader.stash.push(new TypeInfo(id, dataLength));
-
+  reader.stash.push(token);
   return next;
 }
-
+/*
 function readGuidType(reader: Reader) {
   if (!reader.bytesAvailable(1)) {
     return;
@@ -212,24 +351,7 @@ function readGuidType(reader: Reader) {
   return next;
 }
 
-function readIntNType(reader: Reader) {
-  if (!reader.bytesAvailable(1)) {
-    return;
-  }
-
-  const dataLength = reader.readUInt8(0);
-  reader.consumeBytes(1);
-
-  if (dataLength != 0x01 && dataLength != 0x02 && dataLength != 0x04 && dataLength != 0x08) {
-    throw new Error('Invalid data length for INTNTYPE');
-  }
-
-  const next = reader.stash.pop();
-  reader.stash.push(new TypeInfo(0x26, dataLength));
-  return next;
-}
-
-function readDecimalType(reader: Reader) {
+function readDecimalNumericType(id, reader: Reader) {
   if (!reader.bytesAvailable(3)) {
     return;
   }
@@ -237,11 +359,44 @@ function readDecimalType(reader: Reader) {
   const dataLength = reader.readUInt8(0);
   const precision = reader.readUInt8(1);
   const scale = reader.readUInt8(2);
-
   reader.consumeBytes(3);
 
   const next = reader.stash.pop();
-  reader.stash.push(new TypeInfo(0x37, dataLength, precision, scale));
+  reader.stash.push(new TypeInfo(id, dataLength, precision, scale));
+  return next;
+}
+
+function readByteLenType(id, reader: Reader) {
+  if (!reader.bytesAvailable(1)) {
+    return;
+  }
+  const dataLength = reader.readUInt8(0);
+  reader.consumeBytes(1);
+
+  switch (id) {
+    case 0x26:
+      if (dataLength != 0x01 && dataLength != 0x02 && dataLength != 0x04 && dataLength != 0x08) {
+        throw new Error('Invalid data length for INTNTYPE');
+      }
+      break;
+    case 0x68:
+      if (dataLength != 0x00 && dataLength != 0x01) {
+        throw new Error('Invalid data length for BITNTYPE');
+      }
+      break;
+    case 0x6D:
+      if (dataLength !== 4 && dataLength !== 8) {
+        throw new Error('Invalid data length for FLTNTYPE');
+      }
+      break;
+    case 0x6E:
+      if (dataLength !== 4 && dataLength !== 8) {
+        throw new Error('Invalid data length for MONEYNTYPE');
+      }
+      break;
+  }
+  const next = reader.stash.pop();
+  reader.stash.push(new TypeInfo(id, dataLength));
   return next;
 }
 
@@ -351,9 +506,10 @@ function readXmlTypeSchemaCollection(reader: Reader) {
   reader.stash.push(typeInfo);
   return next;
 }
-
+ */
 module.exports.readTypeInfo = readTypeInfo;
 module.exports.TypeInfo = TypeInfo;
+module.exports.Collation = Collation;
 
 /*
 
