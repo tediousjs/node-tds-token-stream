@@ -1098,6 +1098,56 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end(data);
       });
 
+      it('should parse the BIGVARBINARYTYPE(10)- token correctly', function(done) {
+        data = Buffer.alloc(30);
+        tempBuff.copy(data);
+
+        typeid = 0xA5;
+        dataLength = 1;
+
+        const valueAsBuffer = Buffer.from([0x56, 0xFE]);
+        value = Buffer.from([0x56]);
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(8000, offset);
+        offset += 2;
+        // data length
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARBINARYTYPE(10)- token correctly, null value', function(done) {
+        data = Buffer.alloc(28);
+        tempBuff.copy(data);
+
+        typeid = 0xA5;
+        dataLength = (1 << 16) - 1;
+        value = null;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(8000, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        data.writeUInt16LE(dataLength, offset);
+
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {

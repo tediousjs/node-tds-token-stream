@@ -165,6 +165,14 @@ const type = {
     name: 'Binary',
     LengthOfDataLength: 2,
     maximumLength: 8000
+  },
+
+  [0xA5]: {
+    id: 0xA5,
+    type: 'BIGVARBIN',
+    name: 'VarBinary',
+    LengthOfDataLength: 2,
+    maximumLength: 8000
   }
 };
 

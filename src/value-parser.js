@@ -367,27 +367,45 @@ function readValue(reader: Reader) {
         return readDateTimeOffset(reader);
       }
 
+    case 'VarChar':
     case 'Char':
-      if (token.dataLength === MAX) {
-        // TODO: PLP support
-      } else {
+      if (dataLength === NULL) {
+        token.value = null;
+        reader.stash.pop(); // remove dataLength
+        return reader.stash.pop();
+      }
+      else {
         return readChars;
       }
 
+    case 'NVarChar':
     case 'NChar':
-      if (token.dataLength === MAX) {
-        // TODO: PLP support
+      if (dataLength === NULL) {
+        token.value = null;
+        reader.stash.pop(); // remove dataLength
+        return reader.stash.pop();
       } else {
         return readNChars;
       }
 
+    case 'VarBinary':
     case 'Binary':
-      if (token.dataLength === MAX) {
-        // TODO: PLP support
+      if (dataLength === NULL) {
+        token.value = null;
+        reader.stash.pop(); // remove dataLength
+        return reader.stash.pop();
       } else {
         return readBinary;
       }
 
+    case 'Image':
+      if (dataLength === PLP_NULL) {
+        token.value = null;
+        reader.stash.pop(); // remove dataLength
+        return reader.stash.pop();
+      } else {
+        //TODO: implement
+      }
     default:
       console.log('readValue not implemented');
   }
@@ -570,38 +588,18 @@ function readChars(reader: Reader) {
   }
   const token = reader.stash[reader.stash.length - 3];
 
-  let nullValue;
-  switch (TYPE[token.typeInfo.id].name) {
-    case 'VarChar':
-    case 'Char':
-      nullValue = NULL;
-      break;
-    case 'Text':
-      nullValue = PLP_NULL;
-      break;
-    default:
-      console.log('Invalid type');
+  const data = reader.readBuffer(0, dataLength);
+  const collation: Collation = token.typeInfo.collation;
+  let codepage = collation.codepage;
+
+  if (codepage == null) {
+    codepage = DEFAULT_ENCODING;
   }
 
-  if (dataLength === nullValue) {
-    token.value = null;
-    reader.stash.pop(); // remove dataLength
-    return reader.stash.pop();
-  }
-  else {
-    const data = reader.readBuffer(0, dataLength);
-    const collation: Collation = token.typeInfo.collation;
-    let codepage = collation.codepage;
-
-    if (codepage == null) {
-      codepage = DEFAULT_ENCODING;
-    }
-
-    token.value = iconv.decode(data, codepage);
-    reader.consumeBytes(dataLength);
-    reader.stash.pop(); // remove dataLength
-    return reader.stash.pop();
-  }
+  token.value = iconv.decode(data, codepage);
+  reader.consumeBytes(dataLength);
+  reader.stash.pop(); // remove dataLength
+  return reader.stash.pop();
 }
 
 function readNChars(reader: Reader) {
@@ -610,32 +608,11 @@ function readNChars(reader: Reader) {
     return;
   }
   const token = reader.stash[reader.stash.length - 3];
-
-  let nullValue;
-  switch (TYPE[token.typeInfo.id].name) {
-    case 'NVarChar':
-    case 'NChar':
-      nullValue = NULL;
-      break;
-    case 'NText':
-      nullValue = PLP_NULL;
-      break;
-    default:
-      console.log('Invalid type');
-  }
-
-  if (dataLength === nullValue) {
-    token.value = null;
-    reader.stash.pop(); // remove dataLength
-    return reader.stash.pop();
-  }
-  else {
-    const data = reader.readBuffer(0, dataLength);
-    token.value = data.toString('ucs2');
-    reader.consumeBytes(dataLength);
-    reader.stash.pop(); // remove dataLength
-    return reader.stash.pop();
-  }
+  const data = reader.readBuffer(0, dataLength);
+  token.value = data.toString('ucs2');
+  reader.consumeBytes(dataLength);
+  reader.stash.pop(); // remove dataLength
+  return reader.stash.pop();
 }
 
 function readBinary(reader: Reader) {
@@ -645,30 +622,10 @@ function readBinary(reader: Reader) {
   }
   const token = reader.stash[reader.stash.length - 3];
 
-  let nullValue;
-  switch (TYPE[token.typeInfo.id].name) {
-    case 'VarBinary':
-    case 'Binary':
-      nullValue = NULL;
-      break;
-    case 'Image':
-      nullValue = PLP_NULL;
-      break;
-    default:
-      console.log('Invalid type');
-  }
-
-  if (dataLength === nullValue) {
-    token.value = null;
-    reader.stash.pop(); // remove dataLength
-    return reader.stash.pop();
-  }
-  else {
-    token.value = reader.readBuffer(0, dataLength);
-    reader.consumeBytes(dataLength);
-    reader.stash.pop(); // remove dataLength
-    return reader.stash.pop();
-  }
+  token.value = reader.readBuffer(0, dataLength);
+  reader.consumeBytes(dataLength);
+  reader.stash.pop(); // remove dataLength
+  return reader.stash.pop();
 }
 
 module.exports.valueParse = valueParse;
