@@ -1000,6 +1000,76 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end();
       });
 
+      it('should parse the NCHARTYPE(30)- token correctly', function(done) {
+        data = Buffer.alloc(94);
+        tempBuff.copy(data);
+
+        typeid = 0xEF;
+        dataLength = 60;
+
+        const valueAsBuffer = Buffer.from([0x4B, 0x00, 0xF8, 0x00, 0x62, 0x00, 0x65, 0x00, 0x6E, 0x00, 0x68, 0x00, 0x61, 0x00, 0x76, 0x00, 0x6E, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0xFE]);
+        value = 'København                     ';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]);
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the NCHARTYPE(30)-(Japanese) token correctly', function(done) {
+        data = Buffer.alloc(94);
+        tempBuff.copy(data);
+
+        typeid = 0xEF;
+        dataLength = 60;
+
+        const valueAsBuffer = Buffer.from([0x6F, 0x30, 0x58, 0x30, 0x81, 0x30, 0x7E, 0x30, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0xFE]);
+        value = 'はじめま                          ';
+        const codePage = Buffer.from([0x11, 0x04, 0x34, 0x30, 0x00]);
+        collation = {
+          LCID: 263185,
+          codepage: 'CP932'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {

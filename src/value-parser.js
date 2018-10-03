@@ -374,6 +374,13 @@ function readValue(reader: Reader) {
         return readChars;
       }
 
+
+    case 'NChar':
+      if (token.dataLength === MAX) {
+        // TODO: PLP support
+      } else {
+        return readNChars;
+      }
     default:
       console.log('readValue not implemented');
   }
@@ -590,4 +597,37 @@ function readChars(reader: Reader) {
   }
 }
 
+function readNChars(reader: Reader) {
+  const dataLength = reader.stash[reader.stash.length - 1];
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
+  const token = reader.stash[reader.stash.length - 3];
+
+  let nullValue;
+  switch (TYPE[token.typeInfo.id].name) {
+    case 'NVarChar':
+    case 'NChar':
+      nullValue = NULL;
+      break;
+    case 'NText':
+      nullValue = PLP_NULL;
+      break;
+    default:
+      console.log('Invalid type');
+  }
+
+  if (dataLength === nullValue) {
+    token.value = null;
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+  else {
+    const data = reader.readBuffer(0, dataLength);
+    token.value = data.toString('ucs2');
+    reader.consumeBytes(dataLength);
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+}
 module.exports.valueParse = valueParse;

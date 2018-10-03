@@ -216,7 +216,7 @@ function readDataLength(reader: Reader) {
           }
           token.dataLength = reader.readUInt8(0);
           reader.consumeBytes(1);
-          switch (token.dataLength) {
+          switch (token.id) {
             case 0x24: // GUIDTYPE
               if (token.dataLength != 0x00 && token.dataLength != 0x10) {
                 throw new Error('Invalid data length for GUIDTYPE');

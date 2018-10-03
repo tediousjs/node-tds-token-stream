@@ -148,6 +148,15 @@ const type = {
     hasCollation: true,
     LengthOfDataLength: 2,
     maximumLength: 8000
+  },
+
+  [0xEF]: {
+    id: 0xEF,
+    type: 'NCHAR',
+    name: 'NChar',
+    hasCollation: true,
+    LengthOfDataLength: 2,
+    maximumLength: 4000
   }
 };
 
