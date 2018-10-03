@@ -374,13 +374,20 @@ function readValue(reader: Reader) {
         return readChars;
       }
 
-
     case 'NChar':
       if (token.dataLength === MAX) {
         // TODO: PLP support
       } else {
         return readNChars;
       }
+
+    case 'Binary':
+      if (token.dataLength === MAX) {
+        // TODO: PLP support
+      } else {
+        return readBinary;
+      }
+
     default:
       console.log('readValue not implemented');
   }
@@ -630,4 +637,38 @@ function readNChars(reader: Reader) {
     return reader.stash.pop();
   }
 }
+
+function readBinary(reader: Reader) {
+  const dataLength = reader.stash[reader.stash.length - 1];
+  if (!reader.bytesAvailable(dataLength)) {
+    return;
+  }
+  const token = reader.stash[reader.stash.length - 3];
+
+  let nullValue;
+  switch (TYPE[token.typeInfo.id].name) {
+    case 'VarBinary':
+    case 'Binary':
+      nullValue = NULL;
+      break;
+    case 'Image':
+      nullValue = PLP_NULL;
+      break;
+    default:
+      console.log('Invalid type');
+  }
+
+  if (dataLength === nullValue) {
+    token.value = null;
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+  else {
+    token.value = reader.readBuffer(0, dataLength);
+    reader.consumeBytes(dataLength);
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+}
+
 module.exports.valueParse = valueParse;

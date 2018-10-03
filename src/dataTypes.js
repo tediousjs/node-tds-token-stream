@@ -157,6 +157,14 @@ const type = {
     hasCollation: true,
     LengthOfDataLength: 2,
     maximumLength: 4000
+  },
+
+  [0xAD]: {
+    id: 0xAD,
+    type: 'BIGBINARY',
+    name: 'Binary',
+    LengthOfDataLength: 2,
+    maximumLength: 8000
   }
 };
 

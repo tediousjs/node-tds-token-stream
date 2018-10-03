@@ -30,7 +30,7 @@
     "iconv-lite": "^0.4.23",
     "mocha": "^5.0.5",
     "semantic-release": "^15.1.5",
-    "semantic-release-cli": "^4.0.7"
+    "semantic-release-cli": "^4.0.8"
   },
   "dependencies": {
     "babel-runtime": "^6.26.0"

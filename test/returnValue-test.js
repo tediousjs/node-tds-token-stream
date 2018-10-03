@@ -152,7 +152,7 @@ describe('Parsing a RETURNVALUE token', function() {
             assert.equalTime(token.value, value);
             if (options && options.nanoSec) { assert.strictEqual(token.value.nanosecondsDelta, options.nanoSec); }
           } else {
-            assert.strictEqual(token.value, value);
+            assert.deepEqual(token.value, value);
           }
 
           if ((value !== null) && (typeid == 0xAF && options && options.collation)) {
@@ -1067,6 +1067,34 @@ describe('Parsing a RETURNVALUE token', function() {
 
         const token = {};
         addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the BIGBINARYTYPE(10)- token correctly', function(done) {
+        data = Buffer.alloc(39);
+        tempBuff.copy(data);
+
+        typeid = 0xAD;
+        dataLength = 10;
+
+        const valueAsBuffer = Buffer.from([0x56, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFE]);
+        value = Buffer.from([0x56, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // MAXLEN
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        const token = {};
+        addListners(done, token);
         reader.end(data);
       });
 
