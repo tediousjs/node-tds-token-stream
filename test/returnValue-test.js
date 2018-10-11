@@ -1103,6 +1103,7 @@ describe('Parsing a RETURNVALUE token', function() {
         tempBuff.copy(data);
 
         typeid = 0xA5;
+        const maxDataLength = 8000;
         dataLength = 1;
 
         const valueAsBuffer = Buffer.from([0x56, 0xFE]);
@@ -1111,7 +1112,7 @@ describe('Parsing a RETURNVALUE token', function() {
         // TYPE_INFO
         data.writeUInt8(typeid, offset++);
         // MAXLEN
-        data.writeUInt16LE(8000, offset);
+        data.writeUInt16LE(maxDataLength, offset);
         offset += 2;
         // data length
         data.writeUInt16LE(dataLength, offset);
@@ -1131,13 +1132,14 @@ describe('Parsing a RETURNVALUE token', function() {
         tempBuff.copy(data);
 
         typeid = 0xA5;
+        const maxDataLength = 8000;
         dataLength = (1 << 16) - 1;
         value = null;
 
         // TYPE_INFO
         data.writeUInt8(typeid, offset++);
         // MAXLEN
-        data.writeUInt16LE(8000, offset);
+        data.writeUInt16LE(maxDataLength, offset);
         offset += 2;
 
         // TYPE_VARBYTE
@@ -1146,6 +1148,81 @@ describe('Parsing a RETURNVALUE token', function() {
         const token = {};
         addListners(done, token);
         reader.end(data);
+      });
+
+      it('should parse the BIGVARBINARYTYPE(max)- token correctly, known length value', function(done) {
+        data = Buffer.alloc(44);
+        tempBuff.copy(data);
+
+        typeid = 0xA5;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        const chukLen = 1;
+        value = Buffer.from([0x55]);
+        const bufferValue = 0x55;
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+        data.writeUInt8(bufferValue, offset++);
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARBINARYTYPE(max)- token correctly, known length value_2 ', function(done) {
+        data = Buffer.alloc(4070);
+        tempBuff.copy(data);
+
+        const token = {};
+        addListners(done, token);
+
+        typeid = 0xA5;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0x88, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        let bufferValue = Buffer.alloc(4032, 0x55);
+        value = Buffer.alloc(5000, 0x55);
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(4032, offset);
+        offset += 4;
+        bufferValue.copy(data, offset);
+        reader.write(data);
+
+        // chunk 2
+        data = Buffer.alloc(977);
+        bufferValue = Buffer.alloc(968, 0x55);
+        offset = 0;
+        data.writeUInt32LE(968, offset);
+        offset += 4;
+        bufferValue.copy(data, offset);
+        offset += bufferValue.length;
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        reader.write(data);
+        reader.end();
       });
 
     });

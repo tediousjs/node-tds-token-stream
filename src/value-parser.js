@@ -12,6 +12,7 @@ const THREE_AND_A_THIRD = 3 + (1 / 3);
 const MONEY_DIVISOR = 10000;
 const NULL = (1 << 16) - 1;
 const PLP_NULL = new Buffer([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+const UNKNOWN_PLP_LEN = new Buffer([0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
 const DEFAULT_ENCODING = 'utf8';
 
 function valueParse(next: readStep, reader: Reader) {
@@ -61,8 +62,8 @@ function readDataLength(reader: Reader) {
         }
       }
       else {
-        //TODO: add test?
-        return reader.stash.pop();
+        reader.stash.push(undefined);
+        return readValue;
       }
 
     case 0x30: // xx11xxxx - s2.2.4.2.1.2
@@ -390,11 +391,11 @@ function readValue(reader: Reader) {
 
     case 'VarBinary':
     case 'Binary':
-      if (dataLength === NULL) {
-        token.value = null;
+      if (token.typeInfo.dataLength === MAX) {
         reader.stash.pop(); // remove dataLength
-        return reader.stash.pop();
-      } else {
+        return readMaxBinary;
+      }
+      else {
         return readBinary;
       }
 
@@ -615,12 +616,92 @@ function readNChars(reader: Reader) {
   return reader.stash.pop();
 }
 
+
+function readMaxBinary(reader: Reader) {
+  return readMax;
+}
+
+function readMax(reader: Reader) {
+  if (!reader.bytesAvailable(8)) {
+    return;
+  }
+  const token = reader.stash[reader.stash.length - 2];
+  const type = reader.readBuffer(0, 8);
+  reader.consumeBytes(8);
+  if (type.equals(PLP_NULL)) {
+    token.value = null;
+    return reader.stash.pop();
+  } else if (type.equals(UNKNOWN_PLP_LEN)) {
+    // TODO: implement unknown length
+    console.log('UNKNOWN_PLP_LEN not implemented');
+  } else {
+    const low = type.readUInt32LE(0);
+    const high = type.readUInt32LE(4);
+    if (high >= (2 << (53 - 32))) {
+      console.warn('Read UInt64LE > 53 bits : high=' + high + ', low=' + low);
+    }
+
+    const expectedLength = low + (0x100000000 * high);
+    reader.stash.push(expectedLength);
+    return readMaxKnownLength;
+  }
+}
+
+function readMaxKnownLength(reader: Reader) {
+  const totalLength = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 3];
+  token.value = new Buffer(totalLength).fill(0);
+  const offset = 0;
+  reader.stash.push(offset);
+  return readChunk;
+}
+
+function readChunk(reader: Reader) {
+  let offset = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 4];
+  if (!reader.bytesAvailable(4)) {
+    return;
+  }
+  const chunkLength = reader.readUInt32LE(0);
+  if (!reader.bytesAvailable(chunkLength)) {
+    return;
+  }
+  reader.consumeBytes(4);
+  if (!chunkLength) {
+    return doneReadingChunk;
+  }
+  const chunk = reader.readBuffer(0, chunkLength);
+  chunk.copy(token.value, offset);
+  offset += chunkLength;
+  reader.stash[reader.stash.length - 1] = offset;
+  reader.consumeBytes(chunkLength);
+  return readChunk;
+}
+
+function doneReadingChunk(reader: Reader) {
+  const offset = reader.stash[reader.stash.length - 1];
+  const totalLength = reader.stash[reader.stash.length - 2];
+  if (offset !== totalLength) {
+    throw new Error('Partially Length-prefixed Bytes unmatched lengths : expected ' + totalLength + ', but got ' + offset + ' bytes');
+  }
+  reader.stash.pop();reader.stash.pop();
+  const next = reader.stash.pop();
+  return next;
+}
+
 function readBinary(reader: Reader) {
   const dataLength = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 3];
+
+  if (dataLength === NULL) {
+    token.value = null;
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+
   if (!reader.bytesAvailable(dataLength)) {
     return;
   }
-  const token = reader.stash[reader.stash.length - 3];
 
   token.value = reader.readBuffer(0, dataLength);
   reader.consumeBytes(dataLength);
