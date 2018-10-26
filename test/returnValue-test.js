@@ -1225,6 +1225,46 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end();
       });
 
+      it('should parse the BIGVARBINARYTYPE(max)- token correctly, UNKNOWN length value ', function(done) {
+        data = Buffer.alloc(40);
+        tempBuff.copy(data);
+
+        const token = {};
+        addListners(done, token);
+
+        typeid = 0xA5;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        value = Buffer.from([0x12, 0x34, 0x56, 0x78]);
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+        // TYPE_VARBYTE
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(2, offset);
+        offset += 4;
+        value.copy(data, offset, 0, 2);
+        reader.write(data);
+
+        // chunk 2
+        data = Buffer.alloc(11);
+        offset = 0;
+        data.writeUInt32LE(2, offset);
+        offset += 4;
+        value.copy(data, offset, 2, 4);
+        offset += 2;
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        reader.write(data);
+        reader.end();
+      });
+
     });
 
     describe('test FIXEDLENTYPE', function() {
