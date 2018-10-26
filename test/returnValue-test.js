@@ -1225,6 +1225,30 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end();
       });
 
+      it('should parse the BIGVARBINARYTYPE(max)-NULL token correctly, null value', function(done) {
+        data = Buffer.alloc(35);
+        tempBuff.copy(data);
+
+        typeid = 0xA5;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        value = null;
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        dataLength.copy(data, offset);
+        offset += 8;
+        // PLP_TERMINATOR
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
       it('should parse the BIGVARBINARYTYPE(max)- token correctly, UNKNOWN length value ', function(done) {
         data = Buffer.alloc(40);
         tempBuff.copy(data);
