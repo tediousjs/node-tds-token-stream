@@ -381,10 +381,9 @@ function readValue(reader: Reader) {
 
     case 'NVarChar':
     case 'NChar':
-      if (dataLength === NULL) {
-        token.value = null;
+      if (token.typeInfo.dataLength === MAX) {
         reader.stash.pop(); // remove dataLength
-        return reader.stash.pop();
+        return readMaxNChars;
       } else {
         return readNChars;
       }
@@ -605,10 +604,17 @@ function readChars(reader: Reader) {
 
 function readNChars(reader: Reader) {
   const dataLength = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 3];
+
+  if (dataLength === NULL) {
+    token.value = null;
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+
   if (!reader.bytesAvailable(dataLength)) {
     return;
   }
-  const token = reader.stash[reader.stash.length - 3];
   const data = reader.readBuffer(0, dataLength);
   token.value = data.toString('ucs2');
   reader.consumeBytes(dataLength);
@@ -616,6 +622,9 @@ function readNChars(reader: Reader) {
   return reader.stash.pop();
 }
 
+function readMaxNChars(reader: Reader) {
+  return readMax;
+}
 
 function readMaxBinary(reader: Reader) {
   return readMax;
@@ -668,6 +677,9 @@ function readMaxUnKnownLengthChunk(reader: Reader) {
   reader.consumeBytes(4);
   if (!chunkLength) {
     token.value = Buffer.concat(token.value, length);
+    if (token.typeInfo.id === 0xE7) {
+      token.value = token.value.toString('ucs2');
+    }
     reader.stash.pop();
     const next = reader.stash.pop();
     return next;
@@ -705,6 +717,9 @@ function readMaxKnownLengthChunk(reader: Reader) {
     if (offset !== totalLength) {
       throw new Error('Partially Length-prefixed Bytes unmatched lengths : expected ' + totalLength + ', but got ' + offset + ' bytes');
     }
+    if (token.typeInfo.id === 0xE7) {
+      token.value = token.value.toString('ucs2');
+    }
     reader.stash.pop();
     reader.stash.pop();
     const next = reader.stash.pop();
@@ -717,7 +732,6 @@ function readMaxKnownLengthChunk(reader: Reader) {
   reader.consumeBytes(chunkLength);
   return readMaxKnownLengthChunk;
 }
-
 
 function readBinary(reader: Reader) {
   const dataLength = reader.stash[reader.stash.length - 1];

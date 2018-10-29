@@ -1070,6 +1070,168 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end(data);
       });
 
+      it('should parse the NCHARTYPE(30)- token correctly, null value', function(done) {
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0xEF;
+        dataLength = 60;
+        const maxDataLength = (1 << 16) - 1;
+        value = null;
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]);
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the NVARCHARTYPE(max)- token correctly, null value', function(done) {
+        data = Buffer.alloc(40);
+        tempBuff.copy(data);
+
+        typeid = 0xE7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        value = null;
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]);
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION
+        codePage.copy(data, offset);
+        offset += 5;
+
+        // TYPE_VARBYTE
+        dataLength.copy(data, offset);
+        offset += 8;
+        // PLP_TERMINATOR
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the NVARCHARTYPE(max)- token correctly - known length', function(done) {
+        data = Buffer.alloc(66);
+        tempBuff.copy(data);
+
+        typeid = 0xE7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        const valueAsBuffer = Buffer.from([0x4B, 0x00, 0xF8, 0x00, 0x62, 0x00, 0x65, 0x00, 0x6E, 0x00, 0x68, 0x00, 0x61, 0x00, 0x76, 0x00, 0x6E, 0x00]);
+        value = 'København';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]);
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+        const chukLen = 18;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION
+        codePage.copy(data, offset);
+        offset += 5;
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += valueAsBuffer.length;
+
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token);
+        reader.end(data);
+      });
+
+      it('should parse the NVARCHARTYPE(max)- token correctly - unknown length', function(done) {
+        data = Buffer.alloc(53);
+        tempBuff.copy(data);
+        const token = {};
+
+        typeid = 0xE7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        const valueAsBuffer = Buffer.from([0x4B, 0x00, 0xF8, 0x00, 0x62, 0x00, 0x65, 0x00, 0x6E, 0x00, 0x68, 0x00, 0x61, 0x00, 0x76, 0x00, 0x6E, 0x00]);
+        value = 'København';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]);
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION
+        codePage.copy(data, offset);
+        offset += 5;
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(10, offset);
+        offset += 4;
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset, 0, 10);
+        offset += 10;
+        reader.write(data);
+
+        // chunk 2
+        data = Buffer.alloc(17);
+        offset = 0;
+        data.writeUInt32LE(8, offset);
+        offset += 4;
+        valueAsBuffer.copy(data, offset, 10, 18);
+        // data.write(value.slice(3, 6), offset, 3);
+        offset += 8;
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        addListners(done, token);
+        reader.write(data);
+        reader.end();
+      });
+
       it('should parse the BIGBINARYTYPE(10)- token correctly', function(done) {
         data = Buffer.alloc(39);
         tempBuff.copy(data);
