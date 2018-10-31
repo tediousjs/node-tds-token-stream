@@ -1000,6 +1000,254 @@ describe('Parsing a RETURNVALUE token', function() {
         reader.end();
       });
 
+      it('should parse the BIGVARCHRTYPE(30)- token correctly', function(done) {
+        data = Buffer.alloc(37);
+        tempBuff.copy(data);
+
+        typeid = 0xA7;
+        const maxDataLength = 8000;
+        dataLength = 3;
+
+        const valueAsBuffer = Buffer.from([0x61, 0x62, 0x63]);
+        value = 'abc';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += dataLength;
+
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        //TODO: add check for flags and LCID
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARCHRTYPE(30)- null value - token correctly', function(done) {
+        data = Buffer.alloc(34);
+        tempBuff.copy(data);
+
+        typeid = 0xA7;
+        const maxDataLength = 8000;
+        dataLength = (1 << 16) - 1;
+
+        value = null;
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        data.writeUInt16LE(dataLength, offset);
+        offset += 2;
+
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARCHRTYPE(max)- null value - token correctly', function(done) {
+        data = Buffer.alloc(40);
+        tempBuff.copy(data);
+
+        typeid = 0xA7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        value = null;
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        // TYPE_VARBYTE
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARCHRTYPE(max)- knownlength - token correctly', function(done) {
+        data = Buffer.alloc(51);
+        tempBuff.copy(data);
+
+        typeid = 0xA7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        const valueAsBuffer = Buffer.from([0x61, 0x62, 0x63]);
+        value = 'abc';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+        const chukLen = 3;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += valueAsBuffer.length;
+
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARCHRTYPE(max)- knownlength - multi packet - token correctly', function(done) {
+        data = Buffer.alloc(44);
+        tempBuff.copy(data);
+
+        typeid = 0xA7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        const valueAsBuffer = Buffer.from([0x61, 0x62, 0x63]);
+        value = 'abc';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+        let chukLen = 1;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset, 0, 1);
+        reader.write(data);
+
+        data = Buffer.alloc(11);
+        offset = 0;
+        chukLen = 2;
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset, 1);
+        offset += chukLen;
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the BIGVARCHRTYPE(max)- UnKnownlength - token correctly', function(done) {
+        data = Buffer.alloc(46);
+        tempBuff.copy(data);
+
+        typeid = 0xA7;
+        const maxDataLength = (1 << 16) - 1;
+        dataLength = Buffer.from([0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        const valueAsBuffer = Buffer.from([0x61, 0x62, 0x63, 0x64, 0x65, 0x66]);
+        value = 'abcdef';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]); //SQL_Latin1_General_Cp437_BIN
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+        let chukLen = 3;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        data.writeUInt16LE(maxDataLength, offset);
+        offset += 2;
+
+        // COLLATION + MAXLEN
+        codePage.copy(data, offset);
+        offset += 5;
+        dataLength.copy(data, offset);
+        offset += 8;
+
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset, 0, chukLen);
+        offset += chukLen;
+        reader.write(data);
+
+        data = Buffer.alloc(12);
+        offset = 0;
+        chukLen = 3;
+        data.writeUInt32LE(chukLen, offset);
+        offset += 4;
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset, chukLen);
+        offset += chukLen;
+        // PLP_TERMINATOR
+        data.writeUInt32LE(0, offset);
+        offset += 4;
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token, collation);
+        reader.end(data);
+      });
+
       it('should parse the NCHARTYPE(30)- token correctly', function(done) {
         data = Buffer.alloc(94);
         tempBuff.copy(data);
@@ -1099,6 +1347,45 @@ describe('Parsing a RETURNVALUE token', function() {
         data.writeUInt8(0xFE, offset++);
         const token = {};
         addListners(done, token, collation);
+        reader.end(data);
+      });
+
+      it('should parse the NVARCHARTYPE(30)- token correctly - known length', function(done) {
+        data = Buffer.alloc(52);
+        tempBuff.copy(data);
+
+        typeid = 0xE7;
+        const maxDataLength = 30;
+        dataLength = 18;
+        const valueAsBuffer = Buffer.from([0x4B, 0x00, 0xF8, 0x00, 0x62, 0x00, 0x65, 0x00, 0x6E, 0x00, 0x68, 0x00, 0x61, 0x00, 0x76, 0x00, 0x6E, 0x00]);
+        value = 'København';
+        const codePage = Buffer.from([0x09, 0x04, 0xD0, 0x00, 0x34]);
+        collation = {
+          LCID: 1033,
+          codepage: 'CP1252'
+        };
+        const chukLen = 18;
+
+        // TYPE_INFO
+        data.writeUInt8(typeid, offset++);
+        // MAXLEN
+        data.writeUInt16LE(maxDataLength * 2, offset);
+        offset += 2;
+
+        // COLLATION
+        codePage.copy(data, offset);
+        offset += 5;
+
+        data.writeUInt16LE(chukLen, offset);
+        offset += 2;
+
+        // TYPE_VARBYTE
+        valueAsBuffer.copy(data, offset);
+        offset += valueAsBuffer.length;
+
+        data.writeUInt8(0xFE, offset++);
+        const token = {};
+        addListners(done, token);
         reader.end(data);
       });
 

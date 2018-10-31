@@ -370,10 +370,9 @@ function readValue(reader: Reader) {
 
     case 'VarChar':
     case 'Char':
-      if (dataLength === NULL) {
-        token.value = null;
-        reader.stash.pop(); // remove dataLength
-        return reader.stash.pop();
+      if (token.typeInfo.dataLength === MAX) {
+        reader.stash.pop();
+        return readMaxChars;
       }
       else {
         return readChars;
@@ -583,10 +582,17 @@ function readGUID(reader: Reader) {
 
 function readChars(reader: Reader) {
   const dataLength = reader.stash[reader.stash.length - 1];
+  const token = reader.stash[reader.stash.length - 3];
+
+  if (dataLength === NULL) {
+    token.value = null;
+    reader.stash.pop(); // remove dataLength
+    return reader.stash.pop();
+  }
+
   if (!reader.bytesAvailable(dataLength)) {
     return;
   }
-  const token = reader.stash[reader.stash.length - 3];
 
   const data = reader.readBuffer(0, dataLength);
   const collation: Collation = token.typeInfo.collation;
@@ -620,6 +626,10 @@ function readNChars(reader: Reader) {
   reader.consumeBytes(dataLength);
   reader.stash.pop(); // remove dataLength
   return reader.stash.pop();
+}
+
+function readMaxChars(reader: Reader) {
+  return readMax;
 }
 
 function readMaxNChars(reader: Reader) {
@@ -679,6 +689,13 @@ function readMaxUnKnownLengthChunk(reader: Reader) {
     token.value = Buffer.concat(token.value, length);
     if (token.typeInfo.id === 0xE7) {
       token.value = token.value.toString('ucs2');
+    } else if (token.typeInfo.id === 0xA7) {
+      const collation: Collation = token.typeInfo.collation;
+      let codepage = collation.codepage;
+      if (codepage == null) {
+        codepage = DEFAULT_ENCODING;
+      }
+      token.value = iconv.decode(token.value, codepage);
     }
     reader.stash.pop();
     const next = reader.stash.pop();
@@ -719,6 +736,13 @@ function readMaxKnownLengthChunk(reader: Reader) {
     }
     if (token.typeInfo.id === 0xE7) {
       token.value = token.value.toString('ucs2');
+    } else if (token.typeInfo.id === 0xA7) {
+      const collation: Collation = token.typeInfo.collation;
+      let codepage = collation.codepage;
+      if (codepage == null) {
+        codepage = DEFAULT_ENCODING;
+      }
+      token.value = iconv.decode(token.value, codepage);
     }
     reader.stash.pop();
     reader.stash.pop();
