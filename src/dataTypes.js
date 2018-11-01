@@ -173,6 +173,24 @@ const type = {
     name: 'VarBinary',
     LengthOfDataLength: 2,
     maximumLength: 8000
+  },
+
+  [0xA7]: {
+    id: 0xA7,
+    type: 'BIGVARCHR',
+    name: 'VarChar',
+    hasCollation: true,
+    LengthOfDataLength: 2,
+    maximumLength: 8000,
+  },
+
+  [0xE7]: {
+    id: 0xE7,
+    type: 'NVARCHAR',
+    name: 'NVarChar',
+    hasCollation: true,
+    LengthOfDataLength: 2,
+    maximumLength: 4000,
   }
 };
 
