@@ -25,6 +25,7 @@ function nextToken(reader) {
     case 0xA9: return readOrderToken;
     case 0x79: return readReturnStatus;
     case 0xAC: return readReturnValueToken;
+    case 0xED: return readSSPIToken;
     default:
       console.log(reader.buffer.slice(reader.position - 1));
       throw new Error('Unknown token type ' + type.toString(16));
@@ -189,3 +190,4 @@ const readLoginAckToken = require('./tokens/loginack/read');
 const readOrderToken = require('./tokens/order/read');
 const readReturnStatus = require('./tokens/returnStatus/read');
 const readReturnValueToken = require('./tokens/returnvalue/read');
+const readSSPIToken = require('./tokens/sspi/read');
